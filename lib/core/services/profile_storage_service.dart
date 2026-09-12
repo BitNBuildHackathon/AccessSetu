@@ -19,6 +19,7 @@ class ProfileStorageService {
       'reviewCount': profile.reviewCount,
       'accessibilityUpdates': profile.accessibilityUpdates,
       'photoCount': profile.photoCount,
+      'locationCount': profile.locationCount,
       'onboardingComplete': profile.onboardingComplete,
       'medicalInfo': profile.medicalInfo != null ? {
         'condition': profile.medicalInfo!.condition,
@@ -79,6 +80,7 @@ class ProfileStorageService {
         reviewCount: map['reviewCount'] as int? ?? 0,
         accessibilityUpdates: map['accessibilityUpdates'] as int? ?? 0,
         photoCount: map['photoCount'] as int? ?? 0,
+        locationCount: map['locationCount'] as int? ?? 0,
         onboardingComplete: map['onboardingComplete'] as bool? ?? false,
         medicalInfo: map['medicalInfo'] != null ? MedicalInfo(
           condition: map['medicalInfo']['condition'] as String? ?? '',

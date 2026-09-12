@@ -28,14 +28,16 @@ class TTSService {
         
         // Look for a network/premium voice in the current language
         Map<String, String>? bestVoice;
+        final langPrefix = _currentLanguage.split('-').first.toLowerCase();
         for (var voice in availableVoices) {
-          if (voice["locale"]?.startsWith("en") == true) {
+          final loc = voice["locale"]?.toLowerCase() ?? "";
+          if (loc.startsWith(langPrefix)) {
             String name = voice["name"]?.toLowerCase() ?? "";
-            // Google's network voices and "sfg" (high-quality) voices sound the most human
             if (name.contains("network") || name.contains("sfg") || name.contains("premium")) {
               bestVoice = voice;
               break;
             }
+            bestVoice ??= voice;
           }
         }
         
@@ -53,13 +55,26 @@ class TTSService {
 
   Future<void> setLanguage(String langCode) async {
     _currentLanguage = langCode;
-    if (_isInitialized) {
-      final isAvailable = await _flutterTts.isLanguageAvailable(langCode) as bool? ?? false;
-      if (isAvailable) {
-        await _flutterTts.setLanguage(langCode);
-      } else {
-        await _flutterTts.setLanguage('en-US');
-      }
+    await init();
+    final isAvailable = await _flutterTts.isLanguageAvailable(langCode) as bool? ?? false;
+    if (isAvailable) {
+      await _flutterTts.setLanguage(langCode);
+      try {
+        final voices = await _flutterTts.getVoices;
+        if (voices != null) {
+          final prefix = langCode.split('-').first.toLowerCase();
+          for (var voice in voices) {
+            final vMap = Map<String, String>.from(voice);
+            final loc = vMap["locale"]?.toLowerCase() ?? "";
+            if (loc.startsWith(prefix)) {
+              await _flutterTts.setVoice({"name": vMap["name"]!, "locale": vMap["locale"]!});
+              break;
+            }
+          }
+        }
+      } catch (_) {}
+    } else {
+      await _flutterTts.setLanguage('en-US');
     }
   }
 

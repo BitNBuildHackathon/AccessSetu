@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:access_map/shared/models/place.dart';
 import 'package:access_map/shared/models/place_category.dart';
 import 'package:access_map/shared/models/accessibility_feature.dart';
@@ -6,26 +10,87 @@ import 'package:access_map/shared/models/place_review.dart';
 import 'package:access_map/shared/models/accessibility_need.dart';
 import 'package:access_map/shared/models/travel_mode.dart';
 
-/// Abstract place repository — mock now, API later.
+/// Abstract place repository — mock now, API later. A future
+/// ApiPlaceRepository can implement the same surface without UI changes.
 abstract class PlaceRepository {
   Future<List<Place>> getNearbyPlaces(double lat, double lng, {double radiusKm = 10});
   Future<List<Place>> searchPlaces(String query);
   Future<Place?> getPlaceById(String id);
   Future<List<Place>> getPlacesByCategory(PlaceCategory category);
   Future<void> addReview(String placeId, PlaceReview review);
+
+  /// Adds a community-contributed place. Returns the stored place.
+  Future<Place> addPlace(Place place);
+
+  /// Updates an existing place (community places are persisted).
+  Future<void> updatePlace(Place place);
+
+  /// Nearest existing place to the given point within [radiusKm],
+  /// or null when nothing is close enough (duplicate detection).
+  Future<Place?> findNearbyPlace(double lat, double lng, {double radiusKm = 0.15});
 }
 
-/// Mock implementation with 12 realistic places around Goa, India.
-class MockPlaceRepository implements PlaceRepository {
-  late final List<Place> _places;
+/// Persists community-created places locally so they survive app restarts.
+/// SharedPreferences is sufficient for the MVP — no heavyweight DB needed.
+/// Demo/seed places live only in code and are never written here.
+class CommunityPlaceStore {
+  static const _key = 'community_places_v1';
 
-  MockPlaceRepository() {
-    _places = _buildMockPlaces();
+  Future<List<Place>> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_key);
+      if (raw == null || raw.isEmpty) return [];
+      final decoded = (jsonDecode(raw) as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .map(Place.fromJson)
+          .toList();
+      return decoded;
+    } catch (_) {
+      // Corrupt or unreadable data should never crash the app; the demo
+      // dataset still loads and the user can re-submit.
+      return [];
+    }
+  }
+
+  Future<void> save(List<Place> places) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = jsonEncode(places.map((p) => p.toJson()).toList());
+    await prefs.setString(_key, raw);
+  }
+
+  Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
+  }
+}
+
+/// Seed (demo) places + locally persisted community places, surfaced through
+/// one unified list. The map, search and details screens never need to know
+/// where a place came from.
+class MockPlaceRepository implements PlaceRepository {
+  final CommunityPlaceStore communityStore;
+  late final List<Place> _seedPlaces;
+  List<Place> _communityPlaces = [];
+
+  MockPlaceRepository({CommunityPlaceStore? communityStore})
+      : communityStore = communityStore ?? CommunityPlaceStore() {
+    _seedPlaces = _buildMockPlaces();
+  }
+
+  /// All places: seeds first, then community contributions.
+  List<Place> get _places => [..._seedPlaces, ..._communityPlaces];
+
+  Future<void> _ensureCommunityLoaded() async {
+    if (_communityPlaces.isEmpty) {
+      _communityPlaces = await communityStore.load();
+    }
   }
 
   @override
   Future<List<Place>> getNearbyPlaces(double lat, double lng, {double radiusKm = 50}) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    await _ensureCommunityLoaded();
     final sorted = List<Place>.from(_places);
     sorted.sort((a, b) => a.distanceKmFrom(lat, lng).compareTo(b.distanceKmFrom(lat, lng)));
     return sorted.where((p) => p.distanceKmFrom(lat, lng) <= radiusKm).toList();
@@ -34,18 +99,19 @@ class MockPlaceRepository implements PlaceRepository {
   @override
   Future<List<Place>> searchPlaces(String query) async {
     await Future.delayed(const Duration(milliseconds: 200));
+    await _ensureCommunityLoaded();
     final q = query.toLowerCase();
     return _places.where((p) =>
-      p.name.toLowerCase().contains(q) ||
-      p.category.displayName.toLowerCase().contains(q) ||
-      p.address.toLowerCase().contains(q) ||
-      p.description.toLowerCase().contains(q)
-    ).toList();
+        p.name.toLowerCase().contains(q) ||
+        p.category.displayName.toLowerCase().contains(q) ||
+        p.address.toLowerCase().contains(q) ||
+        p.description.toLowerCase().contains(q)).toList();
   }
 
   @override
   Future<Place?> getPlaceById(String id) async {
     await Future.delayed(const Duration(milliseconds: 100));
+    await _ensureCommunityLoaded();
     try {
       return _places.firstWhere((p) => p.id == id);
     } catch (_) {
@@ -56,21 +122,77 @@ class MockPlaceRepository implements PlaceRepository {
   @override
   Future<List<Place>> getPlacesByCategory(PlaceCategory category) async {
     await Future.delayed(const Duration(milliseconds: 200));
+    await _ensureCommunityLoaded();
     return _places.where((p) => p.category == category).toList();
   }
 
   @override
   Future<void> addReview(String placeId, PlaceReview review) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    final idx = _places.indexWhere((p) => p.id == placeId);
+    await _ensureCommunityLoaded();
+    final idx = _communityPlaces.indexWhere((p) => p.id == placeId);
     if (idx != -1) {
-      final place = _places[idx];
-      final newReviews = [review, ...place.reviews];
-      _places[idx] = place.copyWith(
-        reviews: newReviews,
+      // Community place — persist the review.
+      final place = _communityPlaces[idx];
+      final updated = place.copyWith(
+        reviews: [review, ...place.reviews],
+        totalReviews: place.totalReviews + 1,
+        lastCommunityUpdate: DateTime.now(),
+      );
+      _communityPlaces[idx] = updated;
+      await communityStore.save(_communityPlaces);
+      return;
+    }
+    final seedIdx = _seedPlaces.indexWhere((p) => p.id == placeId);
+    if (seedIdx != -1) {
+      // Demo place — update the in-memory copy only; the seed definition
+      // stays untouched so the demo dataset is never corrupted.
+      final place = _seedPlaces[seedIdx];
+      _seedPlaces[seedIdx] = place.copyWith(
+        reviews: [review, ...place.reviews],
         totalReviews: place.totalReviews + 1,
       );
     }
+  }
+
+  @override
+  Future<Place> addPlace(Place place) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    await _ensureCommunityLoaded();
+    _communityPlaces = [place, ..._communityPlaces];
+    await communityStore.save(_communityPlaces);
+    return place;
+  }
+
+  @override
+  Future<void> updatePlace(Place place) async {
+    await _ensureCommunityLoaded();
+    final idx = _communityPlaces.indexWhere((p) => p.id == place.id);
+    if (idx != -1) {
+      _communityPlaces[idx] = place;
+      await communityStore.save(_communityPlaces);
+      return;
+    }
+    final seedIdx = _seedPlaces.indexWhere((p) => p.id == place.id);
+    if (seedIdx != -1) {
+      // Demo place — session-only update; seeds are never persisted over.
+      _seedPlaces[seedIdx] = place;
+    }
+  }
+
+  @override
+  Future<Place?> findNearbyPlace(double lat, double lng, {double radiusKm = 0.15}) async {
+    await _ensureCommunityLoaded();
+    Place? nearest;
+    double nearestKm = double.infinity;
+    for (final place in _places) {
+      final km = place.distanceKmFrom(lat, lng);
+      if (km <= radiusKm && km < nearestKm) {
+        nearest = place;
+        nearestKm = km;
+      }
+    }
+    return nearest;
   }
 
   List<Place> _buildMockPlaces() {

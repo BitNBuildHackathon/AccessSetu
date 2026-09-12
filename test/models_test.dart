@@ -1,17 +1,20 @@
 import 'package:access_map/core/services/navigation_service.dart';
 import 'package:access_map/core/utils/accessibility_visibility_policy.dart';
 import 'package:access_map/features/map/data/mock_place_repository.dart';
+import 'package:access_map/shared/models/accessibility_feature.dart';
 import 'package:access_map/shared/models/accessibility_need.dart';
 import 'package:access_map/shared/models/place.dart';
 import 'package:access_map/shared/models/place_category.dart';
 import 'package:access_map/shared/models/place_review.dart';
 import 'package:access_map/shared/models/travel_mode.dart';
 import 'package:access_map/shared/models/user_profile.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:access_map/shared/models/accessibility_feature.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('Place mode suitability', () {
     test('suitableForMode logic for Solo vs PA', () {
       final placeWithStepFree = Place(
@@ -240,6 +243,192 @@ void main() {
       expect(place.distanceKmFrom(15.4909, 73.8278), closeTo(0, 0.001));
       // Roughly 1 degree of latitude ≈ 111 km.
       expect(place.distanceKmFrom(16.4909, 73.8278), closeTo(111.2, 2));
+    });
+  });
+
+  group('Community place submissions', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    Place communityPlace({String id = 'community-1', String name = 'Test Cafe'}) {
+      return Place(
+        id: id,
+        name: name,
+        category: PlaceCategory.cafe,
+        address: 'Test Street, Goa',
+        description: 'A community-submitted cafe.',
+        latitude: 15.5555,
+        longitude: 73.7510,
+        friendlyScore: 0,
+        wheelchairScore: 0,
+        visualAccessibilityScore: 0,
+        hearingAccessibilityScore: 0,
+        communicationScore: 0,
+        accessibilityFeatures: const [
+          AccessibilityFeature(
+            id: 'cf1',
+            name: 'Ramp',
+            icon: Icons.accessible,
+            category: AccessibilityCategory.physical,
+            status: FeatureStatus.available,
+            confirmationCount: 1,
+          ),
+          AccessibilityFeature(
+            id: 'cf2',
+            name: 'Elevator',
+            icon: Icons.elevator,
+            category: AccessibilityCategory.physical,
+            status: FeatureStatus.unavailable,
+          ),
+          AccessibilityFeature(
+            id: 'cf3',
+            name: 'Braille menu',
+            icon: Icons.menu_book,
+            category: AccessibilityCategory.visual,
+            status: FeatureStatus.unknown,
+          ),
+        ],
+        reviews: const [],
+        source: PlaceSource.community,
+        createdBy: 'demo-user',
+        createdAt: DateTime.now(),
+      );
+    }
+
+    test('community place is new/unrated and demo places are not', () async {
+      final repo = MockPlaceRepository();
+      final places = await repo.getNearbyPlaces(15.4909, 73.8278);
+      expect(places.every((p) => p.source == PlaceSource.demo), isTrue);
+      expect(places.any((p) => p.isNewCommunityPlace), isFalse);
+
+      final stored = await repo.addPlace(communityPlace());
+      expect(stored.source, PlaceSource.community);
+      expect(stored.isNewCommunityPlace, isTrue);
+    });
+
+    test('addPlace persists and getNearbyPlaces returns seed + community',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final repo = MockPlaceRepository();
+      final before = await repo.getNearbyPlaces(15.4909, 73.8278);
+      final seedCount = before.length;
+
+      await repo.addPlace(communityPlace());
+
+      // Same repository instance: place is in the unified list.
+      final after = await repo.getNearbyPlaces(15.4909, 73.8278);
+      expect(after.length, seedCount + 1);
+      expect(after.any((p) => p.id == 'community-1'), isTrue);
+      // Seed places untouched.
+      expect(after.where((p) => p.source == PlaceSource.demo).length, seedCount);
+
+      // Fresh repository instance: place survives "restart".
+      final restartedRepo = MockPlaceRepository();
+      final restarted = await restartedRepo.getNearbyPlaces(15.4909, 73.8278);
+      expect(restarted.length, seedCount + 1);
+      expect(restarted.any((p) => p.id == 'community-1'), isTrue);
+    });
+
+    test('duplicate detection finds a nearby place within threshold', () async {
+      final repo = MockPlaceRepository();
+      // Fishka Restaurant is at 15.5553, 73.7514 — a few metres away.
+      final nearby = await repo.findNearbyPlace(15.55531, 73.75141);
+      expect(nearby, isNotNull);
+      expect(nearby!.name, 'Fishka Restaurant');
+
+      // A far location yields no duplicate.
+      final far = await repo.findNearbyPlace(15.2993, 74.1240); // Margao
+      expect(far, isNull);
+    });
+
+    test('place JSON round-trip preserves all submission data', () async {
+      SharedPreferences.setMockInitialValues({});
+      final repo = MockPlaceRepository();
+      await repo.addPlace(communityPlace());
+      final all = await repo.getNearbyPlaces(15.4909, 73.8278);
+      final stored = all.firstWhere((p) => p.id == 'community-1');
+
+      final json = stored.toJson();
+      final restored = Place.fromJson(json);
+
+      expect(restored.id, stored.id);
+      expect(restored.name, stored.name);
+      expect(restored.category, stored.category);
+      expect(restored.latitude, closeTo(stored.latitude, 0.00001));
+      expect(restored.longitude, closeTo(stored.longitude, 0.00001));
+      expect(restored.source, PlaceSource.community);
+      expect(restored.createdBy, 'demo-user');
+      expect(restored.accessibilityFeatures.length, 3);
+      expect(restored.accessibilityFeatures[0].status, FeatureStatus.available);
+      expect(
+          restored.accessibilityFeatures[0].icon.codePoint,
+          stored.accessibilityFeatures[0].icon.codePoint);
+    });
+
+    test('community place is searchable from the repository', () async {
+      SharedPreferences.setMockInitialValues({});
+      final repo = MockPlaceRepository();
+      await repo.addPlace(communityPlace(name: 'Zephyr Bistro'));
+      final results = await repo.searchPlaces('Zephyr');
+      expect(results, isNotEmpty);
+      expect(results.first.name, 'Zephyr Bistro');
+    });
+
+    test('reviews on community places persist; demo reviews stay session-only',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final repo = MockPlaceRepository();
+      await repo.addPlace(communityPlace(id: 'community-r', name: 'Persist Cafe'));
+
+      final review = PlaceReview(
+        id: 'r-test',
+        placeId: 'community-r',
+        userId: 'demo-user',
+        userName: 'Demo User',
+        overallRating: 8,
+        comment: 'Nice accessible cafe.',
+        createdAt: DateTime.now(),
+        reviewerContext: const AccessibilityContext(travelMode: TravelMode.solo),
+      );
+      await repo.addReview('community-r', review);
+
+      final restarted = MockPlaceRepository();
+      final place = await restarted.getPlaceById('community-r');
+      expect(place, isNotNull);
+      expect(place!.reviews.length, 1);
+      expect(place.reviews.first.comment, 'Nice accessible cafe.');
+    });
+
+    test('new place score grows from real community reviews', () {
+      // The AppState scorer averages actual review ratings once reviews
+      // exist. Assert the model supports that growth path.
+      final base = communityPlace();
+      expect(base.isNewCommunityPlace, isTrue);
+      final review = PlaceReview(
+        id: 'rv1',
+        placeId: base.id,
+        userId: 'u1',
+        userName: 'A',
+        overallRating: 9,
+        physicalAccessibilityRating: 8,
+        communicationRating: 7,
+        comment: 'Great',
+        createdAt: DateTime.now(),
+        reviewerContext: const AccessibilityContext(travelMode: TravelMode.solo),
+      );
+      final updated = base.copyWith(
+        reviews: [review],
+        totalReviews: 1,
+      );
+      expect(updated.reviews.length, 1);
+      expect(updated.isNewCommunityPlace, isFalse);
+    });
+  });
+
+  group('UserProfile contribution types', () {
+    test('location add awards 10 points', () {
+      expect(ContributionType.locationAdd.pointsEarned, 10);
     });
   });
 }

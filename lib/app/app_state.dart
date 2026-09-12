@@ -1,3 +1,4 @@
+import 'package:access_map/core/services/geocoding_service.dart';
 import 'package:access_map/core/services/navigation_service.dart';
 import 'package:access_map/core/services/offline_map_service.dart';
 import 'package:access_map/core/services/profile_storage_service.dart';
@@ -19,6 +20,7 @@ class AppState extends ChangeNotifier {
     PlaceRepository? placeRepository,
     VoiceSearchService? voiceSearchService,
     NavigationService? navigationService,
+    GeocodingService? geocodingService,
     ProfileStorageService? profileStorageService,
     TTSService? ttsService,
     ExplorationService? explorationService,
@@ -26,6 +28,7 @@ class AppState extends ChangeNotifier {
   })  : _placeRepository = placeRepository ?? MockPlaceRepository(),
         _voiceSearchService = voiceSearchService ?? SpeechToTextService(),
         _navigationService = navigationService ?? NavigationService(),
+        _geocodingService = geocodingService ?? const GeocodingService(),
         _profileStorageService = profileStorageService ?? ProfileStorageService(),
         _ttsService = ttsService ?? TTSService(),
         _offlineMapService = offlineMapService ?? OfflineMapService() {
@@ -51,10 +54,14 @@ class AppState extends ChangeNotifier {
   final PlaceRepository _placeRepository;
   final VoiceSearchService _voiceSearchService;
   final NavigationService _navigationService;
+  final GeocodingService _geocodingService;
   final ProfileStorageService _profileStorageService;
   final TTSService _ttsService;
   late final ExplorationService _explorationService;
   final OfflineMapService _offlineMapService;
+
+  GeocodingService get geocodingService => _geocodingService;
+  PlaceRepository get placeRepository => _placeRepository;
 
   UserProfile _profile = UserProfile.empty();
   List<Place> _places = [];
@@ -66,6 +73,8 @@ class AppState extends ChangeNotifier {
   bool _hasSelectedTravelMode = false;
   String? _errorMessage;
   int _tabIndex = 0;
+  final Set<String> _reportedPlaceIds = {};
+  final Map<String, String> _lastReportReasons = {};
 
   UserProfile get profile => _profile;
   List<Place> get places => _places;
@@ -223,13 +232,16 @@ class AppState extends ChangeNotifier {
     await _ttsService.speak(prompt);
   }
 
-  void toggleExplorationMode() {
+  Future<String?> toggleExplorationMode() async {
     if (_explorationService.isActive) {
       _explorationService.stopExploration();
+      notifyListeners();
+      return null;
     } else {
-      _explorationService.startExploration();
+      final error = await _explorationService.startExploration();
+      notifyListeners();
+      return error;
     }
-    notifyListeners();
   }
 
 
@@ -267,12 +279,8 @@ class AppState extends ChangeNotifier {
       ),
     );
     await _placeRepository.addReview(place.id, review);
-    final refreshed = await _placeRepository.getNearbyPlaces(15.4909, 73.8278);
-    _places = refreshed;
-    _visiblePlaces = _searchQuery.trim().isEmpty
-        ? refreshed
-        : await _placeRepository.searchPlaces(_searchQuery);
-    _selectedPlace = refreshed.firstWhere((p) => p.id == place.id);
+    await _refreshPlaces(selectPlaceId: place.id);
+    _recalculateScores(place.id);
     final contribution = CommunityContribution(
       id: 'contribution-${DateTime.now().microsecondsSinceEpoch}',
       type: ContributionType.review,
@@ -364,5 +372,95 @@ class AppState extends ChangeNotifier {
     if (_selectedPlace?.id == updatedPlace.id) {
       _selectedPlace = updatedPlace;
     }
+    _placeRepository.updatePlace(updatedPlace);
+  }
+
+  Future<void> _refreshPlaces({String? selectPlaceId}) async {
+    final refreshed = await _placeRepository.getNearbyPlaces(15.4909, 73.8278);
+    _places = refreshed;
+    _visiblePlaces = _searchQuery.trim().isEmpty
+        ? refreshed
+        : await _placeRepository.searchPlaces(_searchQuery);
+    if (selectPlaceId != null) {
+      _selectedPlace =
+          refreshed.firstWhere((p) => p.id == selectPlaceId, orElse: () => refreshed.first);
+    }
+    notifyListeners();
+  }
+
+  /// Recomputes a place's category scores from its actual review data.
+  /// Community places grow real scores as the community reviews them.
+  void _recalculateScores(String placeId) {
+    final index = _places.indexWhere((p) => p.id == placeId);
+    if (index == -1) return;
+    final place = _places[index];
+    if (place.reviews.isEmpty) return;
+    double avg(double? Function(PlaceReview) pick) {
+      final values = place.reviews.map(pick).whereType<double>().toList();
+      if (values.isEmpty) return place.friendlyScore;
+      return values.reduce((a, b) => a + b) / values.length;
+    }
+
+    final friendly = avg((r) => r.overallRating);
+    final updated = place.copyWith(
+      friendlyScore: double.parse(friendly.toStringAsFixed(1)),
+      wheelchairScore: double.parse(avg((r) => r.physicalAccessibilityRating).toStringAsFixed(1)),
+      visualAccessibilityScore:
+          double.parse(avg((r) => r.physicalAccessibilityRating).toStringAsFixed(1)),
+      hearingAccessibilityScore:
+          double.parse(avg((r) => r.communicationRating).toStringAsFixed(1)),
+      communicationScore:
+          double.parse(avg((r) => r.communicationRating).toStringAsFixed(1)),
+    );
+    _replacePlace(updated);
+    notifyListeners();
+  }
+
+  /// Records a community report about a place's accessibility information.
+  void reportPlaceInfo(Place place, String reason) {
+    _reportedPlaceIds.add(place.id);
+    _lastReportReasons[place.id] = reason;
+    final contribution = CommunityContribution(
+      id: 'report-${DateTime.now().microsecondsSinceEpoch}',
+      type: ContributionType.accessibilityUpdate,
+      description: 'Reported $reason at ${place.name}',
+      pointsEarned: 0,
+      timestamp: DateTime.now(),
+      placeId: place.id,
+      placeName: place.name,
+    );
+    _updateProfile(_profile.copyWith(
+      recentActivity: [contribution, ..._profile.recentActivity],
+    ));
+    notifyListeners();
+  }
+
+  /// Whether the current user has reported this place's info.
+  bool hasReportedPlace(String placeId) => _reportedPlaceIds.contains(placeId);
+
+  /// The most recent report reason for a place, if any.
+  String? reportReasonFor(String placeId) => _lastReportReasons[placeId];
+
+  /// Adds a community-contributed place to the repository, updates the map
+  /// state, awards points, and returns the stored place.
+  Future<Place> addLocation(Place place) async {
+    final stored = await _placeRepository.addPlace(place);
+    await _refreshPlaces(selectPlaceId: stored.id);
+    final contribution = CommunityContribution(
+      id: 'location-${DateTime.now().microsecondsSinceEpoch}',
+      type: ContributionType.locationAdd,
+      description: 'Added ${stored.name}',
+      pointsEarned: ContributionType.locationAdd.pointsEarned,
+      timestamp: DateTime.now(),
+      placeId: stored.id,
+      placeName: stored.name,
+    );
+    _updateProfile(_profile.copyWith(
+      communityPoints:
+          _profile.communityPoints + ContributionType.locationAdd.pointsEarned,
+      locationCount: _profile.locationCount + 1,
+      recentActivity: [contribution, ..._profile.recentActivity],
+    ));
+    return stored;
   }
 }

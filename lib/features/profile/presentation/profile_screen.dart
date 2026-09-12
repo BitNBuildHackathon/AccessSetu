@@ -90,6 +90,40 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
+          Text('Contributions', style: AppTypography.headlineSmall),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _StatTile(
+                  label: 'Points',
+                  value: profile.communityPoints.toString(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _StatTile(
+                  label: 'Locations',
+                  value: profile.locationCount.toString(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _StatTile(
+                  label: 'Reviews',
+                  value: profile.reviewCount.toString(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _StatTile(
+                  label: 'Updates',
+                  value: profile.accessibilityUpdates.toString(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
 
           // Digital Disability Pass & UDID Certificate (1-Tap for Conductors / Security)
           Card(
@@ -314,9 +348,15 @@ class ProfileScreen extends StatelessWidget {
               DropdownMenuItem(value: 'en-US', child: Text('English (US/UK)')),
               DropdownMenuItem(value: 'hi-IN', child: Text('Hindi (hi-IN)')),
             ],
-            onChanged: (value) {
+            onChanged: (value) async {
               if (value != null) {
-                context.read<AppState>().setTTSLanguage(value);
+                final appState = context.read<AppState>();
+                await appState.setTTSLanguage(value);
+                if (value == 'hi-IN') {
+                  appState.ttsService.speak('हिंदी आवाज़ चुनी गई है।', force: true);
+                } else {
+                  appState.ttsService.speak('English voice selected.', force: true);
+                }
               }
             },
           ),
@@ -381,6 +421,35 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.md,
+        horizontal: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.borderRadiusMd,
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        children: [
+          Text(value, style: AppTypography.headlineMedium),
+          const SizedBox(height: AppSpacing.xs),
+          Text(label, style: AppTypography.labelSmall, textAlign: TextAlign.center),
         ],
       ),
     );

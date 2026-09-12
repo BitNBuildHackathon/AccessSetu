@@ -40,7 +40,9 @@ AccessSetu is an accessibility-first Flutter application designed to empower ind
   - **South Goa Heritage & Margao** (~65 MB)
 - **Storage Management**: Progress-tracked downloads, local storage accounting, and one-tap deletion.
 
-### 6. Community Verification & Reviews
+### 6. Community Place Submission & Reviews
+- **5-Step Location Submission Wizard**: Add missing places with interactive map pin picker, reverse geocoding, duplicate detection, tri-state accessibility survey, photo placeholders, and +10 Community Points.
+- **Local Persistence**: Community submissions persist offline via SharedPreferences alongside seed demo places.
 - **Feature Confirmation (+3 Points)**: Verify individual accessibility features (step-free ramps, wide doors, braille, elevators).
 - **Structured 1-10 Reviews (+5 Points)**: Multi-dimensional ratings across staff, communication, assistance, physical access, and restrooms.
 - **Community Points & History**: Earn points toward local access advocate badges with activity tracking.
@@ -51,10 +53,10 @@ AccessSetu is an accessibility-first Flutter application designed to empower ind
 
 - **Framework**: Flutter 3.x / Dart 3.x
 - **State Management**: `provider` (`AppState`)
-- **Map & Geolocation**: `flutter_map`, `latlong2`, `geolocator`
+- **Map & Geolocation**: `flutter_map`, `latlong2`, `geolocator`, `geocoding` (`GeocodingService`)
 - **Speech & Audio**: `flutter_tts`, `speech_to_text`, `audioplayers`
 - **Machine Learning**: `google_mlkit_text_recognition`
-- **Hardware & Utilities**: `image_picker`, `url_launcher`, `qr_flutter`
+- **Hardware & Utilities**: `image_picker`, `url_launcher`, `qr_flutter`, `shared_preferences`
 - **Testing**: `flutter_test`
 
 ---

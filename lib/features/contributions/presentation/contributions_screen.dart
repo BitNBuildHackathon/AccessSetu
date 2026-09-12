@@ -1,9 +1,14 @@
 import 'package:access_map/app/app_state.dart';
 import 'package:access_map/core/theme/app_theme.dart';
+import 'package:access_map/features/contribute/presentation/add_location_screen.dart';
+import 'package:access_map/features/places/presentation/place_details_screen.dart';
+import 'package:access_map/features/reviews/presentation/write_review_screen.dart';
+import 'package:access_map/shared/models/place.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+/// Contribute tab — the community hub with live feed, missions, and add location.
 class ContributionsScreen extends StatefulWidget {
   const ContributionsScreen({super.key});
 
@@ -31,8 +36,23 @@ class _ContributionsScreenState extends State<ContributionsScreen>
   Widget build(BuildContext context) {
     final profile = context.watch<AppState>().profile;
     final points = profile.communityPoints;
-    final nextTierPoints = 200;
-    final progress = (points / nextTierPoints).clamp(0.0, 1.0);
+
+    // Tier ladder
+    const tiers = [
+      (0,    'Bronze Explorer',  100),
+      (100,  'Silver Scout',     250),
+      (250,  'Gold Guide',       500),
+      (500,  'Platinum Champion', 1000),
+      (1000, 'Community Hero',   9999),
+    ];
+    final tierData = tiers.lastWhere((t) => points >= t.$1, orElse: () => tiers.first);
+    final tierName   = tierData.$2;
+    final nextTierPoints = tierData.$3;
+    final tierStart  = tierData.$1;
+    final progress = nextTierPoints == 9999
+        ? 1.0
+        : ((points - tierStart) / (nextTierPoints - tierStart)).clamp(0.0, 1.0);
+    final ptsToNext = nextTierPoints == 9999 ? 0 : nextTierPoints - points;
 
     return Scaffold(
       appBar: AppBar(
@@ -115,13 +135,14 @@ class _ContributionsScreenState extends State<ContributionsScreen>
                               color: Colors.white.withValues(alpha: 0.4),
                             ),
                           ),
-                          child: const Row(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.workspace_premium, color: Colors.amber, size: 20),
-                              SizedBox(width: 4),
+                              const Icon(Icons.workspace_premium, color: Colors.amber, size: 20),
+                              const SizedBox(width: 4),
                               Text(
-                                'Silver Scout',
-                                style: TextStyle(
+                                tierName,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -158,7 +179,9 @@ class _ContributionsScreenState extends State<ContributionsScreen>
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            '${nextTierPoints - points} pts to Gold Guide',
+                            ptsToNext == 0
+                                ? 'Max tier reached! 🏆'
+                                : '$ptsToNext pts to next tier',
                             style: const TextStyle(
                               color: Colors.amberAccent,
                               fontSize: 12,
@@ -179,13 +202,22 @@ class _ContributionsScreenState extends State<ContributionsScreen>
                 children: [
                   Expanded(
                     child: _MetricTile(
+                      label: 'Locations',
+                      value: profile.locationCount,
+                      icon: Icons.add_location_alt,
+                      color: Colors.indigo,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _MetricTile(
                       label: 'Reviews',
                       value: profile.reviewCount,
                       icon: Icons.rate_review,
                       color: Colors.blue,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _MetricTile(
                       label: 'Updates',
@@ -194,7 +226,7 @@ class _ContributionsScreenState extends State<ContributionsScreen>
                       color: Colors.teal,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _MetricTile(
                       label: 'Photos',
@@ -204,6 +236,48 @@ class _ContributionsScreenState extends State<ContributionsScreen>
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              // Quick Contribution Actions
+              _ActionCard(
+                key: const ValueKey('add-location-card'),
+                icon: Icons.add_location_alt,
+                title: 'Add a New Location',
+                subtitle: 'Put an accessible place on the community map',
+                highlight: true,
+                onTap: () => _openAddLocation(context),
+              ),
+              _ActionCard(
+                icon: Icons.fact_check_outlined,
+                title: 'Add Accessibility Information',
+                subtitle: 'Confirm or update what you know about a place',
+                onTap: () => _openAddLocation(context),
+              ),
+              _ActionCard(
+                icon: Icons.rate_review_outlined,
+                title: 'Write a Review',
+                subtitle: 'Share how a place worked for you',
+                onTap: () => _showPickPlaceSheet(
+                  context,
+                  (place) => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => WriteReviewScreen(place: place),
+                    ),
+                  ),
+                ),
+              ),
+              _ActionCard(
+                icon: Icons.verified_outlined,
+                title: 'Confirm Existing Information',
+                subtitle: 'Verify accessibility features you have seen',
+                onTap: () => _showPickPlaceSheet(
+                  context,
+                  (place) => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => PlaceDetailsScreen(placeId: place.id),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
               // Active Missions
@@ -421,6 +495,114 @@ class _ContributionsScreenState extends State<ContributionsScreen>
             },
           ),
         ],
+      ),
+    );
+  }
+
+  void _openAddLocation(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const AddLocationScreen()),
+    );
+  }
+
+  void _showPickPlaceSheet(
+    BuildContext context,
+    void Function(Place place) onPicked,
+  ) {
+    final places = context.read<AppState>().places;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Text('Choose a place', style: AppTypography.headlineSmall),
+            ),
+            ...places.map(
+              (place) => ListTile(
+                leading: Icon(place.category.icon, color: AppColors.primary),
+                title: Text(place.name),
+                subtitle: Text(place.category.displayName),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onPicked(place);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.highlight = false,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadii.borderRadiusMd,
+        side: BorderSide(
+          color: highlight ? AppColors.primary : AppColors.divider,
+          width: highlight ? 1.5 : 1,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: AppRadii.borderRadiusMd,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: highlight ? AppColors.primary : AppColors.primarySurface,
+                  borderRadius: AppRadii.borderRadiusMd,
+                ),
+                child: Icon(
+                  icon,
+                  color: highlight ? AppColors.textOnPrimary : AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: AppTypography.titleLarge),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      subtitle,
+                      style: AppTypography.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.textTertiary),
+            ],
+          ),
+        ),
       ),
     );
   }

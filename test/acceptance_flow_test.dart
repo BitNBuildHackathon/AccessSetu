@@ -5,6 +5,7 @@ import 'package:access_map/shared/widgets/app_components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Pumps the app, flushing the 300ms mock repository delay so no
 /// timers are left pending at the end of a test.
@@ -13,7 +14,7 @@ Future<void> pumpApp(WidgetTester tester) async {
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-
+  SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(const AccessMapApp());
   await tester.pumpAndSettle();
   await tester.pump(const Duration(milliseconds: 500));

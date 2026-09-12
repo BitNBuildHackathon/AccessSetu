@@ -172,7 +172,13 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => _callContact(profile.emergencyContacts.first),
                       icon: const Icon(Icons.phone),
-                      label: Text('CALL ${profile.emergencyContacts.first.name.toUpperCase()}'),
+                      label: Flexible(
+                        child: Text(
+                          'CALL ${profile.emergencyContacts.first.name.toUpperCase()}',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.red.shade900,
@@ -245,9 +251,13 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                       ),
                     ),
                     icon: const Icon(Icons.badge, color: Colors.amberAccent),
-                    label: const Text(
-                      'SHOW OFFICIAL UDID / MEDICAL PASS',
-                      style: TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold),
+                    label: const Flexible(
+                      child: Text(
+                        'SHOW OFFICIAL UDID / MEDICAL PASS',
+                        style: TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
                   ),
                 ),

@@ -78,9 +78,22 @@ class HazardReport {
   final double longitude;
   final DateTime reportedAt;
   DateTime lastConfirmedAt;
-  int confirmationCount;
-  int disputeCount;
+
+  /// Votes from community that hazard is STILL blocked/present.
+  int blockedVotes;
+
+  /// Votes from community that hazard is FIXED/resolved.
+  int fixedVotes;
+
   bool isResolved;
+
+  /// Whether the app has awarded points for this hazard being resolved.
+  bool _resolvedPointsAwarded = false;
+  bool get resolvedPointsAwarded => _resolvedPointsAwarded;
+
+  // Legacy aliases for backwards-compat
+  int get confirmationCount => blockedVotes;
+  int get disputeCount => fixedVotes;
 
   HazardReport({
     required this.id,
@@ -90,8 +103,8 @@ class HazardReport {
     required this.longitude,
     DateTime? reportedAt,
     DateTime? lastConfirmedAt,
-    this.confirmationCount = 1,
-    this.disputeCount = 0,
+    this.blockedVotes = 1,
+    this.fixedVotes = 0,
     this.isResolved = false,
   })  : reportedAt = reportedAt ?? DateTime.now(),
         lastConfirmedAt = lastConfirmedAt ?? (reportedAt ?? DateTime.now());
@@ -105,17 +118,44 @@ class HazardReport {
     return '${age.inDays}d ago';
   }
 
-  void confirmStillPresent() {
-    confirmationCount += 1;
+  int get totalVotes => blockedVotes + fixedVotes;
+
+  /// Winning verdict: true = still blocked, false = fixed
+  bool get communityVerdictIsBlocked =>
+      fixedVotes == 0 || blockedVotes >= fixedVotes;
+
+  /// Progress fraction of "fixed" votes out of total
+  double get fixedVoteFraction =>
+      totalVotes == 0 ? 0 : fixedVotes / totalVotes;
+
+  /// Auto-resolves when fixed votes are strictly more than blocked AND
+  /// total votes reach at least 3 (so 1 vote can't instantly resolve).
+  bool get shouldAutoResolve =>
+      !isResolved && fixedVotes > blockedVotes && totalVotes >= 3;
+
+  void voteBlocked() {
+    blockedVotes += 1;
     lastConfirmedAt = DateTime.now();
   }
 
-  void markFixed() {
+  void voteFixed() {
+    fixedVotes += 1;
+    lastConfirmedAt = DateTime.now();
+    if (shouldAutoResolve) {
+      isResolved = true;
+    }
+  }
+
+  /// Manually mark as resolved and prevent duplicate point awards.
+  bool resolve() {
+    if (_resolvedPointsAwarded) return false;
     isResolved = true;
-    lastConfirmedAt = DateTime.now();
+    _resolvedPointsAwarded = true;
+    return true; // caller should award points
   }
 
-  void dispute() {
-    disputeCount += 1;
-  }
+  // Legacy compat methods
+  void confirmStillPresent() => voteBlocked();
+  void markFixed() => isResolved = true;
+  void dispute() => fixedVotes += 1;
 }

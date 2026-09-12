@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:access_map/app/app_state.dart';
 import 'package:access_map/core/theme/app_theme.dart';
+import 'package:access_map/features/contribute/presentation/add_location_screen.dart';
 import 'package:access_map/features/places/presentation/place_details_screen.dart';
 import 'package:access_map/features/emergency/presentation/sos_emergency_screen.dart';
 import 'package:access_map/features/map/presentation/exploration_overlay.dart';
@@ -33,6 +34,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _isLocating = false;
   MapStyle _currentMapStyle = MapStyle.standard;
   bool _is3DMode = false;
+  String? _lastFittedDestId;
 
   @override
   void initState() {
@@ -145,6 +147,25 @@ class _MapScreenState extends State<MapScreen> {
     final exploration = state.explorationService;
     final isNavigating = exploration.activeDestination != null;
 
+    if (exploration.activeDestination != null && exploration.activeDestination!.id != _lastFittedDestId) {
+      _lastFittedDestId = exploration.activeDestination!.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final userLoc = LatLng(exploration.currentEffectiveLat, exploration.currentEffectiveLng);
+        final destLoc = LatLng(exploration.activeDestination!.latitude, exploration.activeDestination!.longitude);
+        try {
+          _mapController.fitCamera(
+            CameraFit.coordinates(
+              coordinates: [userLoc, destLoc],
+              padding: const EdgeInsets.fromLTRB(40, 110, 40, 250),
+            ),
+          );
+        } catch (_) {}
+      });
+    } else if (exploration.activeDestination == null) {
+      _lastFittedDestId = null;
+    }
+
     return SafeArea(
       child: Stack(
         children: [
@@ -160,6 +181,7 @@ class _MapScreenState extends State<MapScreen> {
                     activeDestination: exploration.activeDestination,
                     routePoints: exploration.routePolylinePoints,
                     hazards: exploration.activeHazards,
+                    currentHeading: exploration.currentHeading,
                     userLocation: LatLng(
                       exploration.currentEffectiveLat,
                       exploration.currentEffectiveLng,
@@ -244,17 +266,35 @@ class _MapScreenState extends State<MapScreen> {
           Positioned(
             right: AppSpacing.lg,
             bottom: isNavigating ? 190 : (state.selectedPlace == null ? AppSpacing.lg : 190),
-            child: FloatingActionButton.small(
-              heroTag: 'location',
-              tooltip: 'Center on my location',
-              onPressed: _onMyLocationPressed,
-              child: _isLocating
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                    )
-                  : const Icon(Icons.my_location),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'add-location',
+                  tooltip: 'Add a new location',
+                  backgroundColor: AppColors.surface,
+                  foregroundColor: AppColors.primary,
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AddLocationScreen(),
+                    ),
+                  ),
+                  child: const Icon(Icons.add_location_alt_outlined),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                FloatingActionButton.small(
+                  heroTag: 'location',
+                  tooltip: 'Center on my location',
+                  onPressed: _onMyLocationPressed,
+                  child: _isLocating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        )
+                      : const Icon(Icons.my_location),
+                ),
+              ],
             ),
           ),
           Positioned(
@@ -271,19 +311,24 @@ class _MapScreenState extends State<MapScreen> {
               label: const Text('SOS', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
-          if (state.profile.accessibilityNeeds.contains(AccessibilityNeed.blindLowVision) &&
-              !exploration.isActive &&
-              !isNavigating)
+          if (!exploration.isActive && !isNavigating)
             Positioned(
               left: AppSpacing.lg,
               bottom: (state.selectedPlace == null ? AppSpacing.lg : 190) + 64,
               child: FloatingActionButton.extended(
                 heroTag: 'discover',
-                backgroundColor: AppColors.secondary,
-                foregroundColor: AppColors.textOnPrimary,
-                onPressed: () => context.read<AppState>().toggleExplorationMode(),
+                backgroundColor: const Color(0xFF0F766E),
+                foregroundColor: Colors.white,
+                onPressed: () async {
+                  final error = await context.read<AppState>().toggleExplorationMode();
+                  if (error != null && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(error)),
+                    );
+                  }
+                },
                 icon: const Icon(Icons.explore),
-                label: const Text('Start Exploration Mode'),
+                label: const Text('Accessible Explorer', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           if (state.errorMessage != null)
@@ -548,6 +593,7 @@ class _AccessibleMap extends StatelessWidget {
     this.routePoints = const [],
     this.hazards = const [],
     this.userLocation,
+    this.currentHeading,
     this.mapController,
     this.mapStyle = MapStyle.standard,
     this.is3DMode = false,
@@ -559,6 +605,7 @@ class _AccessibleMap extends StatelessWidget {
   final List<LatLng> routePoints;
   final List<HazardReport> hazards;
   final LatLng? userLocation;
+  final double? currentHeading;
   final MapController? mapController;
   final MapStyle mapStyle;
   final bool is3DMode;
@@ -580,7 +627,7 @@ class _AccessibleMap extends StatelessWidget {
       children: [
         TileLayer(
           urlTemplate: mapStyle.urlTemplate,
-          userAgentPackageName: 'com.example.access_map',
+          userAgentPackageName: 'com.accessmap.access_map',
           subdomains: const ['a', 'b', 'c', 'd'],
         ),
         // Draw walking route polyline when navigating
@@ -598,23 +645,67 @@ class _AccessibleMap extends StatelessWidget {
           ),
         MarkerLayer(
           markers: [
-            // User location marker
+            // User location marker with live compass rotation and directional beam
             if (userLocation != null)
               Marker(
                 point: userLocation!,
-                width: 44,
-                height: 44,
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.blue.shade600,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
+                width: 56,
+                height: 56,
+                child: Transform.rotate(
+                  angle: ((currentHeading ?? 0) * (math.pi / 180.0)),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Directional field-of-view beam
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.blue.shade600.withValues(alpha: 0.35),
+                              Colors.blue.shade600.withValues(alpha: 0.0),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF1D4ED8),
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.navigation, color: Colors.white, size: 18),
+                        ),
+                      ),
                     ],
                   ),
-                  child: const Center(
-                    child: Icon(Icons.navigation, color: Colors.white, size: 20),
+                ),
+              ),
+
+            // Route turn waypoints
+            if (routePoints.length > 2)
+              ...routePoints.sublist(1, routePoints.length - 1).map(
+                (pt) => Marker(
+                  point: pt,
+                  width: 14,
+                  height: 14,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFF0F766E), width: 3),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 4),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -757,7 +848,7 @@ class PlacePreviewSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final relevant = place.availableFeatures.take(3).toList();
+    final relevant = place.availableFeatures.take(2).toList();
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -773,82 +864,177 @@ class PlacePreviewSheet extends StatelessWidget {
       ),
       child: Material(
         color: Colors.transparent,
-      child: InkWell(
-        borderRadius: AppRadii.borderRadiusMd,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => PlaceDetailsScreen(placeId: place.id),
+        child: InkWell(
+          borderRadius: AppRadii.borderRadiusMd,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => PlaceDetailsScreen(placeId: place.id),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      place.name,
-                      style: AppTypography.headlineSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.scoreColor(place.friendlyScore).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.scoreColor(place.friendlyScore), width: 1.5),
-                    ),
-                    child: Text(
-                      '${place.friendlyScore.toStringAsFixed(1)} Friendly',
-                      style: AppTypography.titleMedium.copyWith(
-                        color: AppColors.scoreColor(place.friendlyScore),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        place.name,
+                        style: AppTypography.headlineSmall.copyWith(fontSize: 18),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => context.read<AppState>().clearSelectedPlace(),
+                    const SizedBox(width: AppSpacing.sm),
+                    if (place.friendlyScore == 0 && place.totalReviews == 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySurface,
+                          borderRadius: AppRadii.borderRadiusFull,
+                        ),
+                        child: Text(
+                          'New',
+                          style: AppTypography.labelMedium
+                              .copyWith(color: AppColors.primary),
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.scoreColor(place.friendlyScore).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.scoreColor(place.friendlyScore), width: 1.5),
+                        ),
+                        child: Text(
+                          '${place.friendlyScore.toStringAsFixed(1)} Friendly',
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.scoreColor(place.friendlyScore),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: AppSpacing.xs),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => context.read<AppState>().clearSelectedPlace(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${place.category.displayName}'
+                  '${userLatitude != null && userLongitude != null ? ' • ${_formatDistance(place.distanceKmFrom(userLatitude!, userLongitude!))}' : ''}'
+                  ' • ${place.communityConfirmations} confirmations',
+                  style: AppTypography.bodySmall.copyWith(fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (relevant.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: relevant
+                        .take(2)
+                        .map(
+                          (feature) => Chip(
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            avatar: Icon(feature.icon, size: 14),
+                            label: Text(feature.name, style: const TextStyle(fontSize: 11)),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                '${place.category.displayName}'
-                '${userLatitude != null && userLongitude != null ? ' • ${_formatDistance(place.distanceKmFrom(userLatitude!, userLongitude!))}' : ''}'
-                ' • ${place.communityConfirmations} confirmations',
-                style: AppTypography.bodySmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: relevant
-                    .map(
-                      (feature) => Chip(
-                        visualDensity: VisualDensity.compact,
-                        avatar: Icon(feature.icon, size: 16),
-                        label: Text(feature.name),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: SizedBox(
+                        height: 38,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0F766E),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppRadii.borderRadiusMd,
+                            ),
+                          ),
+                          onPressed: () async {
+                            final appState = context.read<AppState>();
+                            final error = await appState.explorationService.startExploration();
+                            if (error != null) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(error)),
+                              );
+                              return;
+                            }
+                            appState.explorationService.setDestination(place);
+                            appState.clearSelectedPlace();
+                          },
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.directions_walk, size: 18),
+                              SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Directions',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    )
-                    .toList(),
-              ),
-            ],
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 38,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppRadii.borderRadiusMd,
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => PlaceDetailsScreen(placeId: place.id),
+                            ),
+                          ),
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Details', style: TextStyle(fontSize: 13)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
