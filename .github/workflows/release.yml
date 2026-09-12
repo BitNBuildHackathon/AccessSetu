@@ -1,35 +1,27 @@
-name: Build & Release AccessSetu APK
+name: Release AccessSetu
 
 on:
   push:
     tags:
       - 'v*'
     branches:
-      - main
-      - master
       - access-setu
+      - main
   workflow_dispatch:
-    inputs:
-      release_title:
-        description: 'Release Title (e.g. AccessSetu v1.0.0)'
-        required: false
-        default: 'AccessSetu Official Release'
 
 permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    name: Build Release APK & Bundle
+  release:
+    name: Build & Release APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Java 17 (JDK)
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -42,91 +34,16 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Analyze Project
-        run: flutter analyze --no-fatal-infos
-
-      - name: Extract App Version
-        id: get_version
+      - name: Build Release APK
         run: |
-          RAW_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d '\r' | tr -d ' ')
-          VERSION_NAME=$(echo $RAW_VERSION | cut -d'+' -f1)
-          BUILD_NUMBER=$(echo $RAW_VERSION | cut -d'+' -f2)
-          if [ -z "$BUILD_NUMBER" ] || [ "$BUILD_NUMBER" = "$VERSION_NAME" ]; then
-            BUILD_NUMBER="${{ github.run_number }}"
-          fi
-          TAG_NAME="${{ github.ref_name }}"
-          if [[ ! "$TAG_NAME" =~ ^v ]]; then
-            TAG_NAME="v${VERSION_NAME}"
-          fi
-          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "Building AccessSetu version: $VERSION_NAME+$BUILD_NUMBER (Tag: $TAG_NAME)"
+          flutter pub get
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk AccessSetu-release.apk
 
-      - name: Build Universal Release APK
-        run: |
-          flutter build apk --release \
-            --build-name="${{ steps.get_version.outputs.version_name }}" \
-            --build-number="${{ steps.get_version.outputs.build_number }}"
-
-      - name: Build Split-per-ABI Release APKs
-        run: |
-          flutter build apk --release --split-per-abi \
-            --build-name="${{ steps.get_version.outputs.version_name }}" \
-            --build-number="${{ steps.get_version.outputs.build_number }}"
-
-      - name: Build Release App Bundle (AAB)
-        run: |
-          flutter build appbundle --release \
-            --build-name="${{ steps.get_version.outputs.version_name }}" \
-            --build-number="${{ steps.get_version.outputs.build_number }}"
-
-      - name: Prepare & Rename Release Artifacts
-        run: |
-          mkdir -p dist
-          V="${{ steps.get_version.outputs.version_name }}"
-
-          # Universal APK (main release)
-          if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
-            cp build/app/outputs/flutter-apk/app-release.apk "dist/AccessSetu-v${V}-universal-release.apk"
-          fi
-
-          # Architecture-specific APKs (faster install & smaller footprint)
-          if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
-            cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "dist/AccessSetu-v${V}-arm64-v8a-release.apk"
-          fi
-          if [ -f "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" ]; then
-            cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "dist/AccessSetu-v${V}-armeabi-v7a-release.apk"
-          fi
-          if [ -f "build/app/outputs/flutter-apk/app-x86_64-release.apk" ]; then
-            cp build/app/outputs/flutter-apk/app-x86_64-release.apk "dist/AccessSetu-v${V}-x86_64-release.apk"
-          fi
-
-          # Android App Bundle (Google Play Store)
-          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
-            cp build/app/outputs/bundle/release/app-release.aab "dist/AccessSetu-v${V}-release.aab"
-          fi
-
-          echo "=== Ready Artifacts for Release ==="
-          ls -lh dist/
-
-      - name: Upload Artifacts to Workflow Run
-        uses: actions/upload-artifact@v4
-        with:
-          name: AccessSetu-v${{ steps.get_version.outputs.version_name }}-Release-Binaries
-          path: dist/*
-          if-no-files-found: error
-
-      - name: Publish GitHub Release
+      - name: GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: ${{ steps.get_version.outputs.tag_name }}
-          name: ${{ github.event.inputs.release_title || format('AccessSetu {0}', steps.get_version.outputs.tag_name) }}
-          files: dist/*
+          tag_name: ${{ github.ref_name }}
+          name: AccessSetu ${{ github.ref_name }}
+          files: AccessSetu-release.apk
           generate_release_notes: true
-          draft: false
-          prerelease: false

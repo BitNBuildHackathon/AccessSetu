@@ -15,10 +15,15 @@ AccessSetu is an accessibility-first Flutter application designed to empower ind
 - **Live GPS Tracking**: One-tap center-and-follow positioning with real-time accuracy and weak-signal fallbacks.
 - **Accessibility Filtering**: Filter places by category (Hospitals, Restaurants, Transit, Pharmacies), high friendliness threshold (8.5+), and travel mode suitability.
 
-### 2. Spoken Audio Navigation & Landmark Guidance
-- **Strict Blind-Only Voice Policy**: Spoken cues, auditory turn prompts, and landmark announcements are strictly gated to the **Blind / Low Vision** persona.
+### 2. Multi-Modal Navigation & Spoken Turn Guidance (OSRM)
+- **Open-Source Pedestrian & Vehicle Routing**: Direct integration with OSRM (Open Source Routing Machine) for real street navigation:
+  - 🚶 **Walk**: Sidewalks, pedestrian crossings, footpaths, and step-free routes.
+  - 🚴 **Bike**: Cycling corridors and bike-friendly roads.
+  - 🚗 **Car**: Vehicular driving routes.
+- **15-Second Periodic Voice Guidance**: When navigating, if stationary or paused, spoken prompts announce exact turn degrees and remaining distance (e.g., *"Turn 19 degrees right, then walk 45 meters"*).
+- **Gyroscope & Compass Dial**: Real-time compass heading with live relative angle badge (`R19°`, `L25°`, `0°`) pointing directly toward the next maneuver.
+- **Dynamic Travel Time & Speed**: ETA adjusts in real-time based on live GPS walking/driving speed.
 - **"Where Am I?" Spatial Orientation**: Spoken announcement providing heading, street location, and nearest verified landmark.
-- **Audio Landmark Scanning**: Rapid category exploration for nearby transit, medical facilities, banks, and dining venues.
 - **Proximity Hazard Alerts**: Audio warnings when approaching reported obstacles (broken ramps, construction, missing tactile paving).
 
 ### 3. Digital Disability Pass & UDID Medical ID
@@ -54,22 +59,26 @@ AccessSetu is an accessibility-first Flutter application designed to empower ind
 - **Framework**: Flutter 3.x / Dart 3.x
 - **State Management**: `provider` (`AppState`)
 - **Map & Geolocation**: `flutter_map`, `latlong2`, `geolocator`, `geocoding` (`GeocodingService`)
+- **Routing Engine**: OSRM API (Walk `/foot`, Bike `/bike`, Car `/driving`)
 - **Speech & Audio**: `flutter_tts`, `speech_to_text`, `audioplayers`
 - **Machine Learning**: `google_mlkit_text_recognition`
-- **Hardware & Utilities**: `image_picker`, `url_launcher`, `qr_flutter`, `shared_preferences`
-- **Testing**: `flutter_test`
+- **Hardware & Sensors**: `flutter_compass`, `vibration`, `image_picker`, `qr_flutter`
+- **CI/CD**: GitHub Actions automated release pipeline
 
 ---
 
 ## Project Structure
 
 ```text
+.github/
+└── workflows/
+    └── release.yml                 # Automated APK release pipeline
 lib/
 ├── app/
 │   ├── access_map_app.dart         # Root MaterialApp
 │   └── app_state.dart              # Main state coordinator
 ├── core/
-│   ├── services/                   # TTS, exploration, offline maps, OCR, voice services
+│   ├── services/                   # OSRM routing, TTS, exploration, offline maps, OCR
 │   ├── theme/                      # App theme, typography, colors
 │   └── utils/                      # Visibility policies and math helpers
 ├── features/
@@ -96,25 +105,21 @@ flutter pub get
 flutter run
 ```
 
-### Run Tests
+### Build Release APK
 
 ```bash
-flutter test
-flutter analyze lib test
+flutter build apk --release
 ```
 
----
+Output APK will be at `build/app/outputs/flutter-apk/app-release.apk`.
 
-## Merging with `main`
+### Automated GitHub Release (CI/CD)
 
-To sync and merge this branch into `main`:
+Tag any commit with `v*` to automatically trigger the GitHub Actions release workflow:
 
 ```bash
-git checkout access-setu
-git fetch origin
-git merge origin/main
-flutter test
-git checkout main
-git merge access-setu
-git push origin main
+git tag v1.0.0
+git push origin access-setu --tags
 ```
+
+The workflow will compile a production release APK and publish it directly to your repository's **Releases** page as `AccessSetu-release.apk`.
