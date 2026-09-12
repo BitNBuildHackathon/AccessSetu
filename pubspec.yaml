@@ -25,6 +25,16 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  image_path: "lib/icons/app_icon_round_1024.png"
+  android: "ic_launcher"
+  min_sdk_android: 21
+  adaptive_icon_background: "lib/icons/adaptive_bg.png"
+  adaptive_icon_foreground: "lib/icons/app_icon_round_1024.png"
+  ios: true
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true
