@@ -81,7 +81,7 @@ class MockVoiceSearchService implements VoiceSearchService {
     required void Function() onDone,
     required void Function(String error) onError,
   }) async {
-    onError('Voice search is not available in demo mode.');
+    onError('Voice search is not available on this device.');
   }
 
   @override

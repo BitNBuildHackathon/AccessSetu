@@ -44,34 +44,37 @@ class ScoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AppColors.scoreColor(score);
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: prominent ? color.withValues(alpha: 0.10) : AppColors.surface,
-        borderRadius: AppRadii.borderRadiusMd,
-        border: Border.all(color: prominent ? color : AppColors.divider),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.12),
-            foregroundColor: color,
-            child: Icon(icon),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              label,
-              style: AppTypography.titleMedium,
-              overflow: TextOverflow.ellipsis,
+    return Semantics(
+      label: '$label: ${score.toStringAsFixed(1)} out of 10',
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: prominent ? color.withValues(alpha: 0.10) : AppColors.surface,
+          borderRadius: AppRadii.borderRadiusMd,
+          border: Border.all(color: prominent ? color : AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: color.withValues(alpha: 0.12),
+              foregroundColor: color,
+              child: Icon(icon),
             ),
-          ),
-          Text(
-            score.toStringAsFixed(1),
-            style: AppTypography.scoreSmall.copyWith(color: color),
-          ),
-          const Text('/10', style: AppTypography.bodySmall),
-        ],
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.titleMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text(
+              score.toStringAsFixed(1),
+              style: AppTypography.scoreSmall.copyWith(color: color),
+            ),
+            Text('/10', style: AppTypography.bodySmall),
+          ],
+        ),
       ),
     );
   }

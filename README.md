@@ -1,94 +1,159 @@
-# AccessMap
+# AccessSetu (एक्सेस सेतु)
 
-AccessMap is an accessibility-first community map for discovering places that are welcoming and usable for people with different accessibility needs.
+> **Bridging Accessible Mobility, Spoken Guidance, and Community Confidence**
 
-The MVP starts directly with onboarding, stores a mock user profile, and runs on demo data so it can be shown reliably without authentication, backend setup, or API keys.
+AccessSetu is an accessibility-first Flutter application designed to empower individuals with diverse physical, sensory, and communication needs. Engineered around real-world accessibility infrastructure in Goa, India, AccessSetu combines high-precision spatial mapping, spoken landmark navigation, offline resilience, digital disability credentials, and smart emergency tools into a unified, privacy-focused experience.
 
-## Features
+---
 
-- PA Assisted and Solo onboarding modes
-- Accessibility need selection for Can't Talk, Can't Speak, and Can't See
-- Extensible accessibility profile model, including wheelchair and physical accessibility needs
-- Interactive OpenStreetMap map using `flutter_map`
-- Accessibility-focused search, category filters, and high-friendly filtering
-- Tappable place markers with preview cards (score, distance, confirmations)
-- "Get Directions" opens the venue's real Google Maps entry (each demo place carries an actual Google Maps link; falls back to coordinate-based routing)
-- Full place detail pages with Friendly Score, profile-aware Wheelchair-Friendly score, category scores with progress bars, score explanation sheets, tags, confirmations, and reviews
-- Tap-any-score explanation ("Based on: 43 community reviews ...")
-- Feature-level community confirmation (+3 points) with last-confirmed dates
-- Structured 1-10 review submission across staff, communication, assistance, physical access, facilities, and overall experience
-- Helpful votes, report review, community points, and contribution history
-- Discover screen with category chips, Popular Near You, and Highly Rated by Community
-- Profile editor with a demo wheelchair profile toggle for showing personalization behavior
+## Core Capabilities & Features
 
-## Tech Stack
+### 1. Accessible Map & Spatial Discovery
+- **Interactive Geospatial Map**: High-performance OpenStreetMap rendering powered by `flutter_map` and `latlong2`.
+- **Multi-Style Map Layers**: Toggle between **Standard OSM**, **Satellite View**, and **Public Transport** layers on demand.
+- **3D Perspective Tilt Mode**: Toggle 3D rotation and viewing angles for enhanced streetscape depth perception.
+- **Live GPS Tracking ("My Location")**: Instant center-and-follow positioning with real-time accuracy indicators and graceful weak-signal fallbacks.
+- **Dynamic Feature Filtering**: Filter places by category (Hospitals, Restaurants, Transit, Pharmacies, etc.), high friendliness threshold (8.5+), and travel mode suitability (Solo vs. Assistant-supported).
 
-- Flutter and Dart
-- Provider for state management
-- `flutter_map` with OpenStreetMap demo tiles
-- `speech_to_text` behind a `VoiceSearchService` abstraction
-- `url_launcher` behind a `NavigationService`
-- Mock repositories for places and reviews
+### 2. Lazarillo 360° Spoken Audio Guidance
+- **Strict Blind-Only Voice Policy**: Text-to-speech landmark guidance, auditory turn prompts, and direction cues are strictly gated to users with the **Blind / Low Vision** persona to preserve sensory comfort for others.
+- **"Where Am I?" Spatial Orientation**: One-tap spoken announcements providing current heading, road location, and nearest verified accessible landmark.
+- **Lazarillo Landmark Scanning**: Categorized audio radar for rapid discovery of nearby transit, medical facilities, banks, and dining venues.
+- **Proximity Hazard Alerts**: Spoken warnings when approaching reported hazards (e.g., broken ramps, construction barriers, missing tactile paving).
 
-## Running the Project
+### 3. Digital Disability Pass & UDID Medical ID
+- **Offline Assistance ID Card**: Clean, high-contrast digital card modeled after official disability credentials for transit conductors, station staff, and officials.
+- **UDID Verification & Details**: Displays UDID number, disability category, disability percentage, issuing authority, and validity dates.
+- **Smart Document Scanner (OCR)**: On-device optical character recognition via Google ML Kit to scan physical UDID certificates and extract certificate numbers automatically.
+- **ICE Medical Card & Emergency QR**: Instant access to blood group, chronic conditions, allergy notes, and quick-scan emergency medical QR code.
 
-```bash
-flutter pub get
-flutter run
-```
+### 4. Smart SOS Safety Beacon
+- **Accidental-Tap Protection**: 3-second interactive countdown with vibration feedback to cancel false alarms.
+- **Audible Siren Beacon**: High-volume repeating siren loop for personal safety and attracting immediate bystander assistance.
+- **Voice Help Broadcast**: Synthesized emergency speech loop announcing identity, condition, and distress message.
+- **1-Tap ICE Dialer**: Pre-configured emergency contacts (family, doctor, helpline) with direct phone launch and SMS coordinate dispatch.
 
-Run tests with:
+### 5. Offline Map Package Management
+- **Localized Regional Packs**: Download focused offline tile packages rather than bulky global data:
+  - **Panaji City Center & Mandovi** (~45 MB)
+  - **North Goa Coastal Belt** (~85 MB)
+  - **South Goa Heritage & Margao** (~65 MB)
+- **Storage & State Controls**: Progress-tracked downloads, local storage accounting, and one-tap deletion.
 
-```bash
-flutter test          # 24 tests: unit + acceptance flow
-flutter analyze       # static analysis
-```
+### 6. Community Verification & Reviews
+- **Feature Confirmation (+3 Points)**: Community members confirm or dispute individual accessibility amenities (step-free ramps, wide doorways, braille signage, elevators) with timestamped verification.
+- **Structured 1-10 Reviews (+5 Points)**: Multi-dimensional ratings evaluating staff awareness, communication patience, assistance readiness, physical accessibility, and restroom facilities.
+- **Community Points & History**: Earn points toward local access advocate badges, complete with an activity feed in the Profile & Community tabs.
 
-Build and install the Android APK:
+---
 
-```bash
-flutter build apk --debug   # or: cd android && ./gradlew assembleDebug
-adb install -r build/app/outputs/flutter-apk/app-debug.apk
-```
+## Technology Stack
 
-If `flutter build apk` fails with an NDK version error on your machine, use the Gradle wrapper directly (`cd android && ./gradlew assembleDebug`) — both produce the same APK.
+- **Framework**: Flutter 3.x / Dart 3.x (Null-safe)
+- **State Management**: `provider` (`AppState` architecture)
+- **Map & Geolocation**: `flutter_map`, `latlong2`, `geolocator`
+- **Speech & Audio**: `flutter_tts`, `speech_to_text`, `audioplayers`
+- **Machine Learning**: `google_mlkit_text_recognition`
+- **Hardware Integration**: `image_picker`, `url_launcher`, `qr_flutter`
+- **Testing**: `flutter_test` (Unit, Widget, and End-to-End Acceptance Suites)
 
-## Environment Variables and API Keys
+---
 
-No API key is required for the MVP demo mode.
-
-The current map uses OpenStreetMap tiles through `flutter_map`. If the app later moves to Google Maps, Mapbox, or another provider, add the provider key through platform configuration or environment-specific files. Do not hard-code keys in source.
-
-## Architecture
+## Project Structure
 
 ```text
 lib/
-  app/                  App root and Provider state controller
-  core/                 Theme, services, visibility policy
-  features/             Onboarding, map, places, reviews, profile, contributions
-  shared/models/        User, place, review, feature, category models
-  shared/widgets/       Reusable UI components
+├── app/
+│   ├── access_map_app.dart         # Root MaterialApp with theme & navigation
+│   └── app_state.dart              # Unified central business logic & services coordinator
+├── core/
+│   ├── services/                   # Service layer (TTS, Exploration, Offline Maps, OCR, Voice)
+│   ├── theme/                      # Design tokens, typography, radii, and color palettes
+│   └── utils/                      # Visibility policies and mathematical helpers
+├── features/
+│   ├── contributions/              # Community points, activity logs, and review summaries
+│   ├── emergency/                  # Smart SOS beacon, audible alarm, and ICE contacts
+│   ├── map/                        # MapScreen, 3D tilt, Discover tab, Lazarillo HUD overlay
+│   ├── onboarding/                 # Accessible Welcome onboarding & persona configuration
+│   ├── places/                     # Place details, friendly score sheets, and directions
+│   ├── profile/                    # Profile management, Disability Pass, and Offline Maps
+│   └── reviews/                    # Structured 1-10 review submission flow
+└── shared/
+    ├── models/                     # Place, UserProfile, Hazard, MapStyle, Category, Feature models
+    └── widgets/                    # Accessible buttons, search bar, cards, and bottom sheets
 ```
 
-The UI talks to `AppState`, which calls repository/service abstractions. `MockPlaceRepository` is the current backend substitute and can be replaced by API-backed repositories later.
+---
 
-## Known Limitations
+## Getting Started
 
-- Place data and reviews are mock demo data.
-- Location permission is represented as a demo action; manual search remains usable.
-- Voice search depends on platform speech availability and falls back to a clear message when unavailable.
-- Photo upload is modeled as a future backend-backed action.
-- Accessibility-aware routing is intentionally not implemented in this MVP.
+### Prerequisites
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (`^3.6.0` or later)
+- Android Studio / VS Code with Flutter extensions
+- Android device or emulator with API Level 24+
 
-## Acceptance Checklist
+### Installation & Run
 
-- Launches into onboarding without sign-up
-- Select PA Assisted or Solo
-- Select an accessibility need
-- Opens a map with multiple accessibility-focused places
-- Search and select places
-- View Friendly Score and relevant accessibility information
-- Read contextual community reviews
-- Submit a structured review and earn points
-- Open profile and contributions
-- Add wheelchair need in profile and see Wheelchair-Friendly scores appear
+```bash
+# Clone the repository
+git clone https://github.com/virtuallysarvad/access_app.git
+cd access_app
+
+# Fetch dependencies
+flutter pub get
+
+# Launch the app on an active device or emulator
+flutter run
+```
+
+---
+
+## Automated Test Suite
+
+All tests are verified and passing:
+
+```bash
+# Run all 29 tests across unit, geo, widget, and acceptance suites
+flutter test
+
+# Run static analysis
+flutter analyze lib test
+```
+
+### Test Coverage Highlights:
+- **`test/models_test.dart` (10 tests)**: Accessibility visibility policies, travel mode suitability, and score calculations.
+- **`test/geo_test.dart` (8 tests)**: Great-circle Haversine distances, compass bearings, and navigation deviation math.
+- **`test/widget_test.dart` (2 tests)**: Onboarding flow and main shell navigation.
+- **`test/acceptance_flow_test.dart` (9 tests)**: End-to-end user journeys including onboarding, map search, Discover tab, review submission with points accumulation, helpful votes, and feature confirmations.
+
+---
+
+## Merging with `origin/main`
+
+If you are syncing this feature branch with teammate commits from `origin/main` (e.g. Community Location Submission Wizard and Adaptive Launcher Icons):
+
+```bash
+# 1. Ensure you are on this branch
+git checkout access-setu
+
+# 2. Fetch and merge upstream changes
+git fetch origin
+git merge origin/main
+
+# 3. Resolve any conflicts in lib/app/app_state.dart and lib/shared/models/place.dart
+# (Keep both Lazarillo/Offline services and their community location submission methods)
+
+# 4. Verify the test suite
+flutter test
+
+# 5. Merge back to main and push
+git checkout main
+git merge access-setu
+git push origin main
+```
+
+---
+
+## License
+
+This project is developed for the Google Developer Groups (GDG) hackathon. All rights reserved.

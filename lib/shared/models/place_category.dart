@@ -13,7 +13,10 @@ enum PlaceCategory {
   hotel,
   touristAttraction,
   communityCenter,
-  repairSupport;
+  repairSupport,
+  busStop,
+  pharmacy,
+  atm;
 
   String get displayName {
     switch (this) {
@@ -41,6 +44,12 @@ enum PlaceCategory {
         return 'Community Center';
       case PlaceCategory.repairSupport:
         return 'Repair & Support';
+      case PlaceCategory.busStop:
+        return 'Bus Stop';
+      case PlaceCategory.pharmacy:
+        return 'Pharmacy';
+      case PlaceCategory.atm:
+        return 'ATM';
     }
   }
 
@@ -70,6 +79,12 @@ enum PlaceCategory {
         return Icons.groups;
       case PlaceCategory.repairSupport:
         return Icons.build;
+      case PlaceCategory.busStop:
+        return Icons.directions_bus;
+      case PlaceCategory.pharmacy:
+        return Icons.local_pharmacy;
+      case PlaceCategory.atm:
+        return Icons.local_atm;
     }
   }
 }

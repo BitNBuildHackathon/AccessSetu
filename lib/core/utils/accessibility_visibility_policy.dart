@@ -13,21 +13,17 @@ class AccessibilityVisibilityPolicy {
 
   /// Whether to show visual accessibility score prominently.
   bool showVisualScore(UserProfile profile) {
-    return profile.accessibilityNeeds.contains(AccessibilityNeed.cannotSee) ||
-        profile.accessibilityNeeds
-            .contains(AccessibilityNeed.visuallyImpaired);
+    return profile.accessibilityNeeds.contains(AccessibilityNeed.blindLowVision);
   }
 
   /// Whether to show hearing accessibility score prominently.
   bool showHearingScore(UserProfile profile) {
-    return profile.accessibilityNeeds.contains(AccessibilityNeed.deaf);
+    return profile.accessibilityNeeds.contains(AccessibilityNeed.deafHardOfHearing);
   }
 
   /// Whether to show communication score prominently.
   bool showCommunicationScore(UserProfile profile) {
-    return profile.accessibilityNeeds
-            .contains(AccessibilityNeed.cannotTalk) ||
-        profile.accessibilityNeeds.contains(AccessibilityNeed.cannotSpeak);
+    return profile.accessibilityNeeds.contains(AccessibilityNeed.speechCommunication);
   }
 
   /// Get the list of most relevant accessibility feature categories for
@@ -36,8 +32,7 @@ class AccessibilityVisibilityPolicy {
     final keywords = <String>[];
     for (final need in profile.accessibilityNeeds) {
       switch (need) {
-        case AccessibilityNeed.cannotSee:
-        case AccessibilityNeed.visuallyImpaired:
+        case AccessibilityNeed.blindLowVision:
           keywords.addAll([
             'braille',
             'tactile',
@@ -46,8 +41,7 @@ class AccessibilityVisibilityPolicy {
             'clear signage',
             'high-contrast',
           ]);
-        case AccessibilityNeed.cannotTalk:
-        case AccessibilityNeed.cannotSpeak:
+        case AccessibilityNeed.speechCommunication:
           keywords.addAll([
             'communication',
             'written',
@@ -55,15 +49,14 @@ class AccessibilityVisibilityPolicy {
             'visual',
             'patience',
           ]);
-        case AccessibilityNeed.deaf:
+        case AccessibilityNeed.deafHardOfHearing:
           keywords.addAll([
             'visual announcements',
             'written communication',
             'sign language',
             'hearing loop',
           ]);
-        case AccessibilityNeed.physicallyDisabled:
-        case AccessibilityNeed.wheelchairUser:
+        case AccessibilityNeed.wheelchairMobility:
           keywords.addAll([
             'ramp',
             'elevator',
@@ -72,8 +65,13 @@ class AccessibilityVisibilityPolicy {
             'step-free',
             'wide entrance',
           ]);
-        case AccessibilityNeed.other:
-          break;
+        case AccessibilityNeed.cognitiveNeuro:
+          keywords.addAll([
+            'quiet space',
+            'clear signage',
+            'simple navigation',
+            'sensory-friendly',
+          ]);
       }
     }
     return keywords;

@@ -1,6 +1,7 @@
 import 'accessibility_feature.dart';
 import 'place_category.dart';
 import 'place_review.dart';
+import 'travel_mode.dart';
 import 'dart:math' as math;
 
 /// A place with accessibility data, scores, features, and reviews.
@@ -74,6 +75,19 @@ class Place {
   List<AccessibilityFeature> get unknownFeatures => accessibilityFeatures
       .where((f) => f.status == FeatureStatus.unknown)
       .toList();
+
+  bool hasConfirmedFeatureMatching(String keyword) {
+    return availableFeatures.any((f) => f.name.toLowerCase().contains(keyword.toLowerCase()));
+  }
+
+  bool get hasConfirmedStepFreeAccess => 
+      hasConfirmedFeatureMatching('step-free') || hasConfirmedFeatureMatching('ramp');
+
+  bool get hasConfirmedStaffAssistance => 
+      hasConfirmedFeatureMatching('staff assistance');
+
+  bool suitableForMode(TravelMode mode) => 
+      mode == TravelMode.solo ? hasConfirmedStepFreeAccess : (hasConfirmedStepFreeAccess || hasConfirmedStaffAssistance);
 
   /// Distance in kilometres from the given coordinates.
   double distanceKmFrom(double lat, double lng) {

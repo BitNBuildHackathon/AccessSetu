@@ -8,40 +8,82 @@ import 'package:access_map/shared/models/place_review.dart';
 import 'package:access_map/shared/models/travel_mode.dart';
 import 'package:access_map/shared/models/user_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
+import 'package:access_map/shared/models/accessibility_feature.dart';
 
 void main() {
+  group('Place mode suitability', () {
+    test('suitableForMode logic for Solo vs PA', () {
+      final placeWithStepFree = Place(
+        id: '1', name: 'A', category: PlaceCategory.cafe, address: '', description: '',
+        latitude: 0, longitude: 0, friendlyScore: 0, wheelchairScore: 0, visualAccessibilityScore: 0, hearingAccessibilityScore: 0, communicationScore: 0,
+        reviews: const [],
+        accessibilityFeatures: const [
+          AccessibilityFeature(id: 'f1', name: 'Step-free entrance', category: AccessibilityCategory.physical, icon: Icons.accessible, status: FeatureStatus.available),
+        ],
+      );
+
+      final placeWithStaffAssistance = Place(
+        id: '2', name: 'B', category: PlaceCategory.cafe, address: '', description: '',
+        latitude: 0, longitude: 0, friendlyScore: 0, wheelchairScore: 0, visualAccessibilityScore: 0, hearingAccessibilityScore: 0, communicationScore: 0,
+        reviews: const [],
+        accessibilityFeatures: const [
+          AccessibilityFeature(id: 'f2', name: 'Staff assistance available', category: AccessibilityCategory.physical, icon: Icons.accessible, status: FeatureStatus.available),
+        ],
+      );
+
+      // Step-free is suitable for both
+      expect(placeWithStepFree.suitableForMode(TravelMode.solo), isTrue);
+      expect(placeWithStepFree.suitableForMode(TravelMode.paAssisted), isTrue);
+
+      // Staff assistance is only suitable for PA, not Solo
+      expect(placeWithStaffAssistance.suitableForMode(TravelMode.solo), isFalse);
+      expect(placeWithStaffAssistance.suitableForMode(TravelMode.paAssisted), isTrue);
+    });
+  });
+
   group('AccessibilityVisibilityPolicy', () {
     const policy = AccessibilityVisibilityPolicy();
 
     test('wheelchair score hidden for visual-only profile', () {
-      final profile = UserProfile.mockUser(); // cannotSee
+      final profile = UserProfile.empty().copyWith(accessibilityNeeds: [AccessibilityNeed.blindLowVision]);
       expect(policy.showWheelchairScore(profile), isFalse);
     });
 
-    test('wheelchair score visible for wheelchairUser', () {
-      final profile = UserProfile.mockUser()
-          .copyWith(accessibilityNeeds: [AccessibilityNeed.wheelchairUser]);
-      expect(policy.showWheelchairScore(profile), isTrue);
+    test('shouldShowWheelchairScore returns true when physical needs exist', () {
+      final user = UserProfile.empty().copyWith(
+        accessibilityNeeds: [AccessibilityNeed.wheelchairMobility],
+      );
+      expect(user.shouldShowWheelchairScore, isTrue);
     });
 
-    test('wheelchair score visible for physicallyDisabled', () {
-      final profile = UserProfile.mockUser().copyWith(
-        accessibilityNeeds: [AccessibilityNeed.physicallyDisabled],
+    test('shouldShowWheelchairScore returns false when no physical needs exist', () {
+      final user = UserProfile.empty().copyWith(
+        accessibilityNeeds: [AccessibilityNeed.blindLowVision],
       );
-      expect(policy.showWheelchairScore(profile), isTrue);
+      expect(user.shouldShowWheelchairScore, isFalse);
     });
 
     test('visual score promoted for cannotSee profile', () {
-      final profile = UserProfile.mockUser();
+      final profile = UserProfile.empty().copyWith(accessibilityNeeds: [AccessibilityNeed.blindLowVision]);
       expect(policy.showVisualScore(profile), isTrue);
       expect(policy.showHearingScore(profile), isFalse);
       expect(policy.showCommunicationScore(profile), isFalse);
     });
 
     test('communication score promoted for cannotSpeak profile', () {
-      final profile = UserProfile.mockUser()
-          .copyWith(accessibilityNeeds: [AccessibilityNeed.cannotSpeak]);
+      final profile = UserProfile.empty()
+          .copyWith(accessibilityNeeds: [AccessibilityNeed.speechCommunication]);
       expect(policy.showCommunicationScore(profile), isTrue);
+    });
+
+    test('copyWith updates fields correctly', () {
+      final user = UserProfile.empty();
+      final updated = user.copyWith(
+        displayName: 'New Name',
+        accessibilityNeeds: [AccessibilityNeed.speechCommunication],
+      );
+      expect(updated.displayName, 'New Name');
     });
   });
 

@@ -38,6 +38,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         child: RefreshIndicator(
           onRefresh: context.read<AppState>().loadPlaces,
           child: ListView(
+            key: const ValueKey('discover-list'),
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
               const AccessSearchBar(),
