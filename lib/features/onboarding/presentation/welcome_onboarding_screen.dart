@@ -127,8 +127,8 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                     _FeatureRow(
                       icon: Icons.explore,
                       iconColor: Colors.blue,
-                      title: 'Lazarillo Spoken Guidance',
-                      subtitle: '360° audio explorer and spoken landmarks ("Where Am I?") for blind navigation.',
+                      title: 'Spoken Audio Guidance',
+                      subtitle: 'Audio landmark announcements ("Where Am I?") and turn cues for blind navigation.',
                     ),
                     Divider(height: 20),
                     _FeatureRow(

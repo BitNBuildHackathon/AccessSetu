@@ -28,7 +28,7 @@ class ExplorationOverlay extends StatelessWidget {
             child: SafeArea(
               child: isNavigating
                   ? _buildGoogleMapsNavigationHUD(context, exploration, state)
-                  : _buildLazarilloCategoryExplorer(context, exploration, state),
+                  : _buildCategoryExplorer(context, exploration, state),
             ),
           ),
         );
@@ -37,9 +37,9 @@ class ExplorationOverlay extends StatelessWidget {
   }
 
   // ==========================================
-  // 1. LAZARILLO-STYLE CATEGORY EXPLORER VIEW
+  // 1. CATEGORY AUDIO EXPLORER VIEW
   // ==========================================
-  Widget _buildLazarilloCategoryExplorer(
+  Widget _buildCategoryExplorer(
     BuildContext context,
     ExplorationService exploration,
     AppState state,
@@ -237,7 +237,7 @@ class ExplorationOverlay extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // Lazarillo Grid: 6 Big Accessible Category Cards
+          // Category Grid: 6 Big Accessible Category Cards
           Expanded(
             child: GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
