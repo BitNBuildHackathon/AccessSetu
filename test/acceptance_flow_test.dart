@@ -5,10 +5,12 @@ import 'package:access_map/shared/models/travel_mode.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Pumps the app, flushing the 300ms mock repository delay so no
 /// timers are left pending at the end of a test.
 Future<void> pumpApp(WidgetTester tester) async {
+  SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(const AccessMapApp());
   await tester.pumpAndSettle();
   await tester.pump(const Duration(milliseconds: 400));

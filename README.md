@@ -18,7 +18,9 @@ The MVP starts directly with onboarding, stores a mock user profile, and runs on
 - Feature-level community confirmation (+3 points) with last-confirmed dates
 - Structured 1-10 review submission across staff, communication, assistance, physical access, facilities, and overall experience
 - Helpful votes, report review, community points, and contribution history
-- Discover screen with category chips, Popular Near You, and Highly Rated by Community
+- Community location submission: 5-step Add Location flow (pick on map or search, basic info, tri-state accessibility survey, photos, review) with duplicate detection, +10 points, provisional "New" scores until the community rates the place, and offline persistence via SharedPreferences
+- Report incorrect place information
+- Discover screen with category chips, Popular Near You, Highly Rated by Community, and Recently Added
 - Profile editor with a demo wheelchair profile toggle for showing personalization behavior
 
 ## Tech Stack
@@ -28,7 +30,8 @@ The MVP starts directly with onboarding, stores a mock user profile, and runs on
 - `flutter_map` with OpenStreetMap demo tiles
 - `speech_to_text` behind a `VoiceSearchService` abstraction
 - `url_launcher` behind a `NavigationService`
-- Mock repositories for places and reviews
+- Mock repositories for places and reviews, with a SharedPreferences-backed store for community-contributed places
+- `geolocator` + local fallback geocoding behind a `GeocodingService` for location search and reverse geocoding
 
 ## Running the Project
 
@@ -40,7 +43,7 @@ flutter run
 Run tests with:
 
 ```bash
-flutter test          # 24 tests: unit + acceptance flow
+flutter test          # 40 tests: unit + acceptance + add-location flow
 flutter analyze       # static analysis
 ```
 

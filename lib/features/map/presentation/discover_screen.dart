@@ -30,6 +30,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       ..sort((a, b) => b.communityConfirmations.compareTo(a.communityConfirmations));
     final highlyRated = [...allPlaces]
       ..sort((a, b) => b.friendlyScore.compareTo(a.friendlyScore));
+    final recentlyAdded = allPlaces
+        .where((p) => p.source == PlaceSource.community)
+        .toList()
+      ..sort((a, b) => (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000)));
     final showingCategorySections = _selectedCategory == null;
 
     return Scaffold(
@@ -76,6 +80,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 )
               else ...[
                 if (showingCategorySections) ...[
+                  if (recentlyAdded.isNotEmpty) ...[
+                    const SectionHeader('Recently Added'),
+                    ...recentlyAdded.take(3).map(
+                          (place) => Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                            child: PlaceCard(
+                              place: place,
+                              onTap: () => _openDetails(context, place),
+                            ),
+                          ),
+                        ),
+                  ],
                   const SectionHeader('Popular Near You'),
                   SizedBox(
                     height: 190,

@@ -7,7 +7,8 @@ enum ContributionType {
   accessibilityUpdate,
   photoUpload,
   confirmation,
-  helpfulVote;
+  helpfulVote,
+  locationAdd;
 
   String get displayName {
     switch (this) {
@@ -21,6 +22,8 @@ enum ContributionType {
         return 'Confirmation';
       case ContributionType.helpfulVote:
         return 'Helpful Vote';
+      case ContributionType.locationAdd:
+        return 'Location Added';
     }
   }
 
@@ -36,6 +39,8 @@ enum ContributionType {
         return 3;
       case ContributionType.helpfulVote:
         return 2;
+      case ContributionType.locationAdd:
+        return 10;
     }
   }
 }
@@ -71,6 +76,7 @@ class UserProfile {
   final int reviewCount;
   final int accessibilityUpdates;
   final int photoCount;
+  final int locationCount;
   final List<CommunityContribution> recentActivity;
   final bool onboardingComplete;
 
@@ -83,6 +89,7 @@ class UserProfile {
     this.reviewCount = 0,
     this.accessibilityUpdates = 0,
     this.photoCount = 0,
+    this.locationCount = 0,
     this.recentActivity = const [],
     this.onboardingComplete = false,
   });
@@ -100,6 +107,7 @@ class UserProfile {
     int? reviewCount,
     int? accessibilityUpdates,
     int? photoCount,
+    int? locationCount,
     List<CommunityContribution>? recentActivity,
     bool? onboardingComplete,
   }) {
@@ -112,6 +120,7 @@ class UserProfile {
       reviewCount: reviewCount ?? this.reviewCount,
       accessibilityUpdates: accessibilityUpdates ?? this.accessibilityUpdates,
       photoCount: photoCount ?? this.photoCount,
+      locationCount: locationCount ?? this.locationCount,
       recentActivity: recentActivity ?? this.recentActivity,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     );
@@ -127,6 +136,7 @@ class UserProfile {
         reviewCount: 12,
         accessibilityUpdates: 8,
         photoCount: 4,
+        locationCount: 1,
         recentActivity: [
           CommunityContribution(
             id: 'c1',

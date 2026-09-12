@@ -47,6 +47,40 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
+          Text('Contributions', style: AppTypography.headlineSmall),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _StatTile(
+                  label: 'Points',
+                  value: profile.communityPoints.toString(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _StatTile(
+                  label: 'Locations',
+                  value: profile.locationCount.toString(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _StatTile(
+                  label: 'Reviews',
+                  value: profile.reviewCount.toString(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _StatTile(
+                  label: 'Updates',
+                  value: profile.accessibilityUpdates.toString(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
           const Text('Travel Mode', style: AppTypography.headlineSmall),
           const SizedBox(height: AppSpacing.md),
           SegmentedButton<TravelMode>(
@@ -119,6 +153,35 @@ class ProfileScreen extends StatelessWidget {
             icon: const Icon(Icons.accessible),
             label: const Text('Demo Wheelchair Profile'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.md,
+        horizontal: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.borderRadiusMd,
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        children: [
+          Text(value, style: AppTypography.headlineMedium),
+          const SizedBox(height: AppSpacing.xs),
+          Text(label, style: AppTypography.labelSmall, textAlign: TextAlign.center),
         ],
       ),
     );

@@ -5,6 +5,7 @@ import 'package:access_map/features/reviews/presentation/write_review_screen.dar
 import 'package:access_map/shared/models/accessibility_feature.dart';
 import 'package:access_map/shared/models/place.dart';
 import 'package:access_map/shared/models/place_review.dart';
+import 'package:access_map/shared/models/user_profile.dart';
 import 'package:access_map/shared/widgets/app_components.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -37,11 +38,23 @@ class PlaceDetailsScreen extends StatelessWidget {
       });
 
     return Scaffold(
-      appBar: AppBar(title: Text(place.name)),
+      appBar: AppBar(
+        title: Text(place.name),
+        actions: [
+          IconButton(
+            key: const ValueKey('report-info-button'),
+            tooltip: 'Report incorrect information',
+            icon: const Icon(Icons.flag_outlined),
+            onPressed: () => _showPlaceReportSheet(context, place),
+          ),
+        ],
+      ),
       body: ListView(
         key: const ValueKey('place-details-list'),
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
+          if (place.source == PlaceSource.community)
+            _CommunityAttributionBanner(place: place),
           _HeroPanel(place: place),
           const SizedBox(height: AppSpacing.lg),
           PrimaryButton(
@@ -57,51 +70,55 @@ class PlaceDetailsScreen extends StatelessWidget {
             },
           ),
           const SectionHeader('Accessibility overview'),
-          _ExplainableScore(
+          if (place.friendlyScore == 0 && place.totalReviews == 0)
+            _ProvisionalScoresPanel(policy: policy, profile: profile)
+          else ...[
+            _ExplainableScore(
             label: 'Friendly Score',
             score: place.friendlyScore,
             icon: Icons.star,
             prominent: true,
             explanation: _friendlyScoreExplanation(place),
           ),
-          const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
           if (policy.showWheelchairScore(profile)) ...[
+              _ExplainableScore(
+                label: 'Wheelchair-Friendly',
+                score: place.wheelchairScore,
+                icon: Icons.accessible,
+                prominent: true,
+                explanation:
+                    'Based on ratings from wheelchair users and physically disabled community members, weighted toward physical access factors such as entrances, restrooms and parking.',
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
             _ExplainableScore(
-              label: 'Wheelchair-Friendly',
-              score: place.wheelchairScore,
-              icon: Icons.accessible,
-              prominent: true,
+              label: 'Visual Accessibility',
+              score: place.visualAccessibilityScore,
+              icon: Icons.visibility,
+              prominent: policy.showVisualScore(profile),
               explanation:
-                  'Based on ratings from wheelchair users and physically disabled community members, weighted toward physical access factors such as entrances, restrooms and parking.',
+                  'How well blind and visually impaired visitors rate navigation, signage, staff support and sensory guidance here.',
             ),
             const SizedBox(height: AppSpacing.md),
+            _ExplainableScore(
+              label: 'Hearing Friendly',
+              score: place.hearingAccessibilityScore,
+              icon: Icons.hearing,
+              prominent: policy.showHearingScore(profile),
+              explanation:
+                  'How well deaf and hard-of-hearing visitors rate visual announcements, written communication and staff awareness here.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _ExplainableScore(
+              label: 'Communication Friendly',
+              score: place.communicationScore,
+              icon: Icons.chat,
+              prominent: policy.showCommunicationScore(profile),
+              explanation:
+                  'How well staff support written, visual and patient communication for visitors who cannot speak or talk.',
+            ),
           ],
-          _ExplainableScore(
-            label: 'Visual Accessibility',
-            score: place.visualAccessibilityScore,
-            icon: Icons.visibility,
-            prominent: policy.showVisualScore(profile),
-            explanation:
-                'How well blind and visually impaired visitors rate navigation, signage, staff support and sensory guidance here.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _ExplainableScore(
-            label: 'Hearing Friendly',
-            score: place.hearingAccessibilityScore,
-            icon: Icons.hearing,
-            prominent: policy.showHearingScore(profile),
-            explanation:
-                'How well deaf and hard-of-hearing visitors rate visual announcements, written communication and staff awareness here.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _ExplainableScore(
-            label: 'Communication Friendly',
-            score: place.communicationScore,
-            icon: Icons.chat,
-            prominent: policy.showCommunicationScore(profile),
-            explanation:
-                'How well staff support written, visual and patient communication for visitors who cannot speak or talk.',
-          ),
           if (personalizedFeatures.isNotEmpty) ...[
             const SectionHeader('Why this may work for you'),
             ...personalizedFeatures.take(4).map(
@@ -153,6 +170,65 @@ class PlaceDetailsScreen extends StatelessWidget {
         '• Accessibility facilities available\n'
         '• ${place.communityConfirmations} community confirmations\n'
         '• Recent reports';
+  }
+
+  void _showPlaceReportSheet(BuildContext context, Place place) {
+    final state = context.read<AppState>();
+    final alreadyReported = state.hasReportedPlace(place.id);
+    final reasons = [
+      'Accessibility feature no longer exists',
+      'Information is incorrect',
+      'Place has changed',
+      'Duplicate location',
+      'Other',
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          children: [
+            const Text('Report accessibility information',
+                style: AppTypography.headlineSmall),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Help the community keep information accurate.',
+              style: AppTypography.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (alreadyReported)
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.infoLight,
+                  borderRadius: AppRadii.borderRadiusMd,
+                ),
+                child: Text(
+                  'You reported: ${state.reportReasonFor(place.id)}',
+                  style: AppTypography.bodyMedium,
+                ),
+              )
+            else
+              ...reasons.map(
+                (reason) => ListTile(
+                  title: Text(reason),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    context.read<AppState>().reportPlaceInfo(place, reason);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content:
+                              Text('Reported: $reason. Thank you for helping.')),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showReportSheet(BuildContext context, Place place, PlaceReview review) {
@@ -229,8 +305,164 @@ class _HeroPanel extends StatelessWidget {
           _InfoLine(icon: Icons.place_outlined, text: place.address),
           if (place.phone != null) _InfoLine(icon: Icons.phone_outlined, text: place.phone!),
           if (place.website != null) _InfoLine(icon: Icons.language, text: place.website!),
+          if (place.photos.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _PhotoStrip(photos: place.photos),
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// Community-added banner (#51, #52) — shown only for community places.
+class _CommunityAttributionBanner extends StatelessWidget {
+  const _CommunityAttributionBanner({required this.place});
+
+  final Place place;
+
+  @override
+  Widget build(BuildContext context) {
+    final addedAt = place.createdAt == null
+        ? null
+        : DateFormat.yMMMMd().format(place.createdAt!);
+    return Container(
+      key: const ValueKey('community-banner'),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.primarySurface,
+        borderRadius: AppRadii.borderRadiusMd,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.volunteer_activism, color: AppColors.primary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              addedAt == null
+                  ? 'Added by the community'
+                  : 'Added by the community - $addedAt',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.primaryDark,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Provisional score state for places with no community ratings yet
+/// (#40, #41) — honest labels instead of fake numbers.
+class _ProvisionalScoresPanel extends StatelessWidget {
+  const _ProvisionalScoresPanel({
+    required this.policy,
+    required this.profile,
+  });
+
+  final AccessibilityVisibilityPolicy policy;
+  final UserProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('provisional-scores-panel'),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: AppRadii.borderRadiusMd,
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.hourglass_empty, color: AppColors.textSecondary),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  'Friendly Score - New',
+                  style: AppTypography.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const Text(
+            'Not enough community ratings yet. This place was recently added; '
+            'scores appear as the community reviews and confirms it.',
+            style: AppTypography.bodyMedium,
+          ),
+          if (policy.showWheelchairScore(profile)) ...[
+            const SizedBox(height: AppSpacing.md),
+            const Text(
+              'Wheelchair-Friendly - awaiting community ratings',
+              style: AppTypography.bodyMedium,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Community photo strip with captions (#20).
+class _PhotoStrip extends StatelessWidget {
+  const _PhotoStrip({required this.photos});
+
+  final List<PlacePhoto> photos;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${photos.length} community photo${photos.length == 1 ? '' : 's'}',
+          style: AppTypography.titleMedium,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          height: 96,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: photos.length,
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+            itemBuilder: (context, index) {
+              final photo = photos[index];
+              return Container(
+                width: 96,
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius: AppRadii.borderRadiusMd,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.image_outlined,
+                        color: AppColors.primary, size: 28),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      photo.caption?.isNotEmpty == true
+                          ? photo.caption!
+                          : 'Community photo',
+                      style: AppTypography.labelSmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:access_map/app/app_state.dart';
 import 'package:access_map/core/theme/app_theme.dart';
+import 'package:access_map/features/contribute/presentation/add_location_screen.dart';
 import 'package:access_map/features/places/presentation/place_details_screen.dart';
 import 'package:access_map/shared/models/place.dart';
 import 'package:access_map/shared/models/place_category.dart';
@@ -65,19 +66,37 @@ class _MapScreenState extends State<MapScreen> {
           Positioned(
             right: AppSpacing.lg,
             bottom: state.selectedPlace == null ? AppSpacing.lg : 190,
-            child: FloatingActionButton.small(
-              heroTag: 'location',
-              tooltip: 'Use current location',
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Demo mode is centered on Goa. Manual search still works without location.',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'add-location',
+                  tooltip: 'Add a new location',
+                  backgroundColor: AppColors.surface,
+                  foregroundColor: AppColors.primary,
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AddLocationScreen(),
                     ),
                   ),
-                );
-              },
-              child: const Icon(Icons.my_location),
+                  child: const Icon(Icons.add_location_alt_outlined),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                FloatingActionButton.small(
+                  heroTag: 'location',
+                  tooltip: 'Use current location',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Demo mode is centered on Goa. Manual search still works without location.',
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.my_location),
+                ),
+              ],
             ),
           ),
           if (state.errorMessage != null)
@@ -275,12 +294,29 @@ class PlacePreviewSheet extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Text(
-                    '${place.friendlyScore.toStringAsFixed(1)} Friendly',
-                    style: AppTypography.titleMedium.copyWith(
-                      color: AppColors.scoreColor(place.friendlyScore),
+                  if (place.friendlyScore == 0 && place.totalReviews == 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySurface,
+                        borderRadius: AppRadii.borderRadiusFull,
+                      ),
+                      child: Text(
+                        'New',
+                        style: AppTypography.labelMedium
+                            .copyWith(color: AppColors.primary),
+                      ),
+                    )
+                  else
+                    Text(
+                      '${place.friendlyScore.toStringAsFixed(1)} Friendly',
+                      style: AppTypography.titleMedium.copyWith(
+                        color: AppColors.scoreColor(place.friendlyScore),
+                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),

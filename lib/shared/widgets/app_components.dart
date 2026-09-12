@@ -172,7 +172,24 @@ class PlaceCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  _ScorePill(score: place.friendlyScore),
+                  if (place.friendlyScore == 0 && place.totalReviews == 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySurface,
+                        borderRadius: AppRadii.borderRadiusFull,
+                      ),
+                      child: Text(
+                        'New',
+                        style: AppTypography.labelMedium
+                            .copyWith(color: AppColors.primary),
+                      ),
+                    )
+                  else
+                    _ScorePill(score: place.friendlyScore),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),

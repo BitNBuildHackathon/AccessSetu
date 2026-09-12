@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Map tiles + directions links -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Requested at runtime only when the user taps "Use My Current Location" -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <application
         android:label="access_map"
         android:name="${applicationName}"
