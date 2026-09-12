@@ -5,12 +5,9 @@
 *.swp
 .DS_Store
 .atom/
-.build/
 .buildlog/
 .history
 .svn/
-.swiftpm/
-migrate_working_dir/
 
 # IntelliJ related
 *.iml
@@ -30,6 +27,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+dist/
 /coverage/
 
 # Symbolication & Obfuscation
@@ -37,16 +35,22 @@ app.*.symbols
 app.*.map.json
 
 # Android
-**/android/**/gradle-wrapper.jar
 .gradle/
 /android/.gradle/
 /android/local.properties
+/android/key.properties
+*.keystore
+*.jks
 /android/app/debug
 /android/app/profile
 /android/app/release
 /android/build/
 *.apk
 *.aab
+
+# Ensure Gradle wrapper is tracked for CI/CD builds
+!**/android/**/gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
 
 # iOS
 **/ios/**/Pods/
