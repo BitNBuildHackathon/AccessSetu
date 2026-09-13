@@ -26,7 +26,7 @@ class MainShell extends StatelessWidget {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Map'),
           NavigationDestination(icon: Icon(Icons.explore_outlined), label: 'Discover'),
-          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), label: 'Contribute'),
+          NavigationDestination(icon: Icon(Icons.people_alt_outlined), label: 'Community'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
       ),

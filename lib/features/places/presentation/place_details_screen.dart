@@ -3,6 +3,7 @@ import 'package:access_map/core/theme/app_theme.dart';
 import 'package:access_map/core/utils/accessibility_visibility_policy.dart';
 import 'package:access_map/features/reviews/presentation/write_review_screen.dart';
 import 'package:access_map/shared/models/accessibility_feature.dart';
+import 'package:access_map/shared/models/accessibility_need.dart';
 import 'package:access_map/shared/models/place.dart';
 import 'package:access_map/shared/models/place_review.dart';
 import 'package:access_map/shared/models/user_profile.dart';
@@ -37,6 +38,8 @@ class PlaceDetailsScreen extends StatelessWidget {
         return b.createdAt.compareTo(a.createdAt);
       });
 
+    final isBlind = context.watch<AppState>().profile.accessibilityNeeds.contains(AccessibilityNeed.blindLowVision);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(place.name),
@@ -56,18 +59,48 @@ class PlaceDetailsScreen extends StatelessWidget {
           if (place.source == PlaceSource.community)
             _CommunityAttributionBanner(place: place),
           _HeroPanel(place: place),
-          const SizedBox(height: AppSpacing.lg),
-          PrimaryButton(
-            label: 'Get Directions',
-            icon: Icons.directions,
-            onPressed: () async {
-              final opened = await context.read<AppState>().openDirections(place);
-              if (!opened && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Directions are unavailable on this device.')),
-                );
-              }
-            },
+          Row(
+            children: [
+              Expanded(
+                child: PrimaryButton(
+                  label: isBlind ? 'Voice Navigation' : 'Start Navigation',
+                  icon: isBlind ? Icons.record_voice_over : Icons.navigation,
+                  onPressed: () async {
+                    final appState = context.read<AppState>();
+                    final error = await appState.explorationService.startExploration();
+                    if (error != null) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(error)),
+                      );
+                      return;
+                    }
+                    appState.explorationService.setDestination(place);
+                    if (!context.mounted) return;
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final opened = await context.read<AppState>().openDirections(place);
+                    if (!opened && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Directions are unavailable on this device.')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.map_outlined, size: 18),
+                  label: const Text('Google Maps', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 52),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadii.borderRadiusMd),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SectionHeader('Accessibility overview'),
           if (place.friendlyScore == 0 && place.totalReviews == 0)
@@ -190,7 +223,7 @@ class PlaceDetailsScreen extends StatelessWidget {
           shrinkWrap: true,
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
-            const Text('Report accessibility information',
+            Text('Report accessibility information',
                 style: AppTypography.headlineSmall),
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -241,7 +274,7 @@ class PlaceDetailsScreen extends StatelessWidget {
           shrinkWrap: true,
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
-            const Text('Report review', style: AppTypography.headlineSmall),
+            Text('Report review', style: AppTypography.headlineSmall),
             const SizedBox(height: AppSpacing.md),
             ...reasons.map(
               (reason) => ListTile(
@@ -392,14 +425,14 @@ class _ProvisionalScoresPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          const Text(
+          Text(
             'Not enough community ratings yet. This place was recently added; '
             'scores appear as the community reviews and confirms it.',
             style: AppTypography.bodyMedium,
           ),
           if (policy.showWheelchairScore(profile)) ...[
             const SizedBox(height: AppSpacing.md),
-            const Text(
+            Text(
               'Wheelchair-Friendly - awaiting community ratings',
               style: AppTypography.bodyMedium,
             ),
@@ -525,30 +558,34 @@ class _ExplainableScore extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: AppRadii.borderRadiusMd,
-      onTap: () => _showExplanation(context),
-      child: Column(
-        children: [
-          ScoreCard(
-            label: label,
-            score: score,
-            icon: icon,
-            prominent: prominent,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          ClipRRect(
-            borderRadius: AppRadii.borderRadiusFull,
-            child: LinearProgressIndicator(
-              value: score / 10,
-              minHeight: 6,
-              backgroundColor: AppColors.surfaceVariant,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                AppColors.scoreColor(score),
+    return Semantics(
+      button: true,
+      label: '$label: ${score.toStringAsFixed(1)} out of 10. Double tap for community rating breakdown.',
+      child: InkWell(
+        borderRadius: AppRadii.borderRadiusMd,
+        onTap: () => _showExplanation(context),
+        child: Column(
+          children: [
+            ScoreCard(
+              label: label,
+              score: score,
+              icon: icon,
+              prominent: prominent,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            ClipRRect(
+              borderRadius: AppRadii.borderRadiusFull,
+              child: LinearProgressIndicator(
+                value: score / 10,
+                minHeight: 6,
+                backgroundColor: AppColors.surfaceVariant,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppColors.scoreColor(score),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -557,8 +594,9 @@ class _ExplainableScore extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (context) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.xl),
           child: Column(
             mainAxisSize: MainAxisSize.min,

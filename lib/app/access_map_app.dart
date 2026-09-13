@@ -1,7 +1,7 @@
 import 'package:access_map/app/app_state.dart';
 import 'package:access_map/core/theme/app_theme.dart';
 import 'package:access_map/features/map/presentation/main_shell.dart';
-import 'package:access_map/features/onboarding/presentation/mode_selection_screen.dart';
+import 'package:access_map/features/onboarding/presentation/welcome_onboarding_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,7 +19,7 @@ class AccessMapApp extends StatelessWidget {
         home: Consumer<AppState>(
           builder: (context, state, _) {
             if (!state.profile.onboardingComplete) {
-              return const ModeSelectionScreen();
+              return const WelcomeOnboardingScreen();
             }
             return const MainShell();
           },

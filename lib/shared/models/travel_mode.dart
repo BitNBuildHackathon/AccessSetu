@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 /// Travel mode — independent of accessibility needs.
 enum TravelMode {
   solo,
@@ -21,12 +23,14 @@ enum TravelMode {
     }
   }
 
-  String get iconLabel {
+  IconData get icon {
     switch (this) {
       case TravelMode.solo:
-        return '🧑';
+        return Icons.person;
       case TravelMode.paAssisted:
-        return '🤝';
+        return Icons.handshake;
     }
   }
+
+  String get iconLabel => displayName;
 }

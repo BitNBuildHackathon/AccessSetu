@@ -156,6 +156,19 @@ class Place {
       .where((f) => f.status == FeatureStatus.unknown)
       .toList();
 
+  bool hasConfirmedFeatureMatching(String keyword) {
+    return availableFeatures.any((f) => f.name.toLowerCase().contains(keyword.toLowerCase()));
+  }
+
+  bool get hasConfirmedStepFreeAccess => 
+      hasConfirmedFeatureMatching('step-free') || hasConfirmedFeatureMatching('ramp');
+
+  bool get hasConfirmedStaffAssistance => 
+      hasConfirmedFeatureMatching('staff assistance');
+
+  bool suitableForMode(TravelMode mode) => 
+      mode == TravelMode.solo ? hasConfirmedStepFreeAccess : (hasConfirmedStepFreeAccess || hasConfirmedStaffAssistance);
+
   /// Distance in kilometres from the given coordinates.
   double distanceKmFrom(double lat, double lng) {
     const r = 6371.0; // Earth radius in km.

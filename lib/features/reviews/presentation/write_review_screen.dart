@@ -128,13 +128,36 @@ class _RatingSlider extends StatelessWidget {
               Text('${value.round()}/10', style: AppTypography.titleMedium),
             ],
           ),
-          Slider(
-            min: 1,
-            max: 10,
-            divisions: 9,
-            value: value,
-            label: value.round().toString(),
-            onChanged: onChanged,
+          Semantics(
+            value: '${value.round()} out of 10',
+            increasedValue: value < 10 ? '${(value + 1).round()} out of 10' : null,
+            decreasedValue: value > 1 ? '${(value - 1).round()} out of 10' : null,
+            onIncrease: value < 10 ? () => onChanged(value + 1) : null,
+            onDecrease: value > 1 ? () => onChanged(value - 1) : null,
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: value > 1 ? () => onChanged(value - 1) : null,
+                  tooltip: 'Decrease $label rating',
+                ),
+                Expanded(
+                  child: Slider(
+                    min: 1,
+                    max: 10,
+                    divisions: 9,
+                    value: value,
+                    label: value.round().toString(),
+                    onChanged: onChanged,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: value < 10 ? () => onChanged(value + 1) : null,
+                  tooltip: 'Increase $label rating',
+                ),
+              ],
+            ),
           ),
         ],
       ),

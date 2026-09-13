@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// AccessMap Design System — Colors, Typography, Spacing, Radii, Shadows
 /// Calm, modern, trustworthy, inclusive palette with excellent contrast ratios.
@@ -62,128 +63,110 @@ class AppColors {
 class AppTypography {
   AppTypography._();
 
-  static const String _fontFamily = 'Roboto';
-
-  static const TextStyle displayLarge = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle displayLarge = GoogleFonts.inter(
     fontSize: 32,
     fontWeight: FontWeight.w700,
     height: 1.2,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle displayMedium = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle displayMedium = GoogleFonts.inter(
     fontSize: 28,
     fontWeight: FontWeight.w700,
     height: 1.25,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle headlineLarge = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle headlineLarge = GoogleFonts.inter(
     fontSize: 24,
     fontWeight: FontWeight.w600,
     height: 1.3,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle headlineMedium = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle headlineMedium = GoogleFonts.inter(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     height: 1.35,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle headlineSmall = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle headlineSmall = GoogleFonts.inter(
     fontSize: 18,
     fontWeight: FontWeight.w600,
     height: 1.35,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle titleLarge = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle titleLarge = GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w600,
     height: 1.4,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle titleMedium = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle titleMedium = GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w600,
     height: 1.4,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle bodyLarge = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle bodyLarge = GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w400,
     height: 1.5,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle bodyMedium = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle bodyMedium = GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     height: 1.5,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle bodySmall = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle bodySmall = GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w400,
     height: 1.5,
     color: AppColors.textSecondary,
   );
 
-  static const TextStyle labelLarge = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle labelLarge = GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.4,
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle labelMedium = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle labelMedium = GoogleFonts.inter(
     fontSize: 12,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
+    color: AppColors.textPrimary,
+  );
+
+  static final TextStyle labelSmall = GoogleFonts.inter(
+    fontSize: 11,
     fontWeight: FontWeight.w500,
     height: 1.4,
     color: AppColors.textSecondary,
   );
 
-  static const TextStyle labelSmall = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 10,
-    fontWeight: FontWeight.w500,
-    height: 1.4,
-    color: AppColors.textTertiary,
-  );
-
-  static const TextStyle scoreDisplay = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle scoreDisplay = GoogleFonts.inter(
     fontSize: 36,
     fontWeight: FontWeight.w800,
     height: 1.1,
   );
 
-  static const TextStyle scoreMedium = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle scoreMedium = GoogleFonts.inter(
     fontSize: 24,
     fontWeight: FontWeight.w700,
     height: 1.2,
   );
 
-  static const TextStyle scoreSmall = TextStyle(
-    fontFamily: _fontFamily,
+  static final TextStyle scoreSmall = GoogleFonts.inter(
     fontSize: 18,
     fontWeight: FontWeight.w700,
     height: 1.2,
@@ -262,7 +245,6 @@ class AppShadows {
 ThemeData buildAppTheme() {
   return ThemeData(
     useMaterial3: true,
-    fontFamily: 'Roboto',
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       primary: AppColors.primary,
@@ -271,7 +253,7 @@ ThemeData buildAppTheme() {
       surface: AppColors.surface,
     ),
     scaffoldBackgroundColor: AppColors.background,
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: AppColors.surface,
       foregroundColor: AppColors.textPrimary,
       elevation: 0,

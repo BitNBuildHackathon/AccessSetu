@@ -1,6 +1,74 @@
 import 'accessibility_need.dart';
 import 'travel_mode.dart';
 
+class MedicalInfo {
+  final String condition;
+  final String allergies;
+  final String instructions;
+  final String udidNumber;
+  final String disabilityCategory;
+  final String disabilityPercentage;
+  final String issuingAuthority;
+  final String issueDate;
+  final String bloodGroup;
+  final bool hasUploadedDocument;
+  final String documentName;
+
+  const MedicalInfo({
+    this.condition = '',
+    this.allergies = '',
+    this.instructions = '',
+    this.udidNumber = '',
+    this.disabilityCategory = '',
+    this.disabilityPercentage = '',
+    this.issuingAuthority = '',
+    this.issueDate = '',
+    this.bloodGroup = '',
+    this.hasUploadedDocument = false,
+    this.documentName = '',
+  });
+
+  MedicalInfo copyWith({
+    String? condition,
+    String? allergies,
+    String? instructions,
+    String? udidNumber,
+    String? disabilityCategory,
+    String? disabilityPercentage,
+    String? issuingAuthority,
+    String? issueDate,
+    String? bloodGroup,
+    bool? hasUploadedDocument,
+    String? documentName,
+  }) {
+    return MedicalInfo(
+      condition: condition ?? this.condition,
+      allergies: allergies ?? this.allergies,
+      instructions: instructions ?? this.instructions,
+      udidNumber: udidNumber ?? this.udidNumber,
+      disabilityCategory: disabilityCategory ?? this.disabilityCategory,
+      disabilityPercentage: disabilityPercentage ?? this.disabilityPercentage,
+      issuingAuthority: issuingAuthority ?? this.issuingAuthority,
+      issueDate: issueDate ?? this.issueDate,
+      bloodGroup: bloodGroup ?? this.bloodGroup,
+      hasUploadedDocument: hasUploadedDocument ?? this.hasUploadedDocument,
+      documentName: documentName ?? this.documentName,
+    );
+  }
+}
+
+class EmergencyContact {
+  final String name;
+  final String phone;
+  final String relation;
+
+  const EmergencyContact({
+    required this.name,
+    required this.phone,
+    required this.relation,
+  });
+}
+
 /// Activity type for community contributions.
 enum ContributionType {
   review,
@@ -66,7 +134,7 @@ class CommunityContribution {
   });
 }
 
-/// User profile — works with mock user now, real auth later.
+/// User profile for the current session.
 class UserProfile {
   final String id;
   final String displayName;
@@ -79,6 +147,8 @@ class UserProfile {
   final int locationCount;
   final List<CommunityContribution> recentActivity;
   final bool onboardingComplete;
+  final MedicalInfo? medicalInfo;
+  final List<EmergencyContact> emergencyContacts;
 
   const UserProfile({
     required this.id,
@@ -92,6 +162,8 @@ class UserProfile {
     this.locationCount = 0,
     this.recentActivity = const [],
     this.onboardingComplete = false,
+    this.medicalInfo,
+    this.emergencyContacts = const [],
   });
 
   /// Check if the user's profile warrants showing wheelchair-specific score.
@@ -110,6 +182,8 @@ class UserProfile {
     int? locationCount,
     List<CommunityContribution>? recentActivity,
     bool? onboardingComplete,
+    MedicalInfo? medicalInfo,
+    List<EmergencyContact>? emergencyContacts,
   }) {
     return UserProfile(
       id: id,
@@ -123,44 +197,71 @@ class UserProfile {
       locationCount: locationCount ?? this.locationCount,
       recentActivity: recentActivity ?? this.recentActivity,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
+      medicalInfo: medicalInfo ?? this.medicalInfo,
+      emergencyContacts: emergencyContacts ?? this.emergencyContacts,
     );
   }
 
-  /// Default mock user for development.
-  static UserProfile mockUser() => UserProfile(
-        id: 'demo-user',
-        displayName: 'Demo User',
+  /// Default profile with initial realistic demo data
+  static UserProfile empty() => UserProfile(
+        id: 'user-1',
+        displayName: 'Aarav Sharma',
         travelMode: TravelMode.solo,
-        accessibilityNeeds: [AccessibilityNeed.cannotSee],
-        communityPoints: 245,
-        reviewCount: 12,
+        accessibilityNeeds: const [],
+        communityPoints: 125,
+        reviewCount: 3,
         accessibilityUpdates: 8,
         photoCount: 4,
         locationCount: 1,
+        medicalInfo: const MedicalInfo(
+          condition: 'Low vision / requires audio guidance & high contrast',
+          allergies: 'Penicillin',
+          instructions: 'Carries white cane. Guide by offering arm.',
+          udidNumber: 'GA0710119950034512',
+          disabilityCategory: 'Visual Impairment (Low Vision)',
+          disabilityPercentage: '75% Permanent',
+          issuingAuthority: 'Goa Medical College (GMC) & Hospital, Bambolim',
+          issueDate: '12/03/2023',
+          bloodGroup: 'B+ Positive',
+          hasUploadedDocument: true,
+          documentName: 'Govt_UDID_Certificate_Aarav.pdf',
+        ),
+        emergencyContacts: const [
+          EmergencyContact(name: 'Raj Sharma', phone: '+919876543210', relation: 'Brother'),
+          EmergencyContact(name: 'Dr. Anita Desai', phone: '+919822112233', relation: 'Physician'),
+        ],
         recentActivity: [
           CommunityContribution(
-            id: 'c1',
-            type: ContributionType.review,
-            description: 'Reviewed Fishka Restaurant',
+            id: 'c-1',
+            type: ContributionType.accessibilityUpdate,
+            description: 'Confirmed step-free entrance & ramp at Panaji Bus Stand',
             pointsEarned: 5,
             timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+            placeName: 'Panaji Bus Stand',
+          ),
+          CommunityContribution(
+            id: 'c-2',
+            type: ContributionType.review,
+            description: 'Added detailed sensory & accessibility review for Fishka Restaurant',
+            pointsEarned: 10,
+            timestamp: DateTime.now().subtract(const Duration(days: 1)),
             placeName: 'Fishka Restaurant',
           ),
           CommunityContribution(
-            id: 'c2',
-            type: ContributionType.accessibilityUpdate,
-            description: 'Added ramp information at Basilica of Bom Jesus',
-            pointsEarned: 5,
-            timestamp: DateTime.now().subtract(const Duration(days: 1)),
-            placeName: 'Basilica of Bom Jesus',
+            id: 'c-3',
+            type: ContributionType.photoUpload,
+            description: 'Uploaded tactile paving & accessible entrance photo at Goa Medical College',
+            pointsEarned: 10,
+            timestamp: DateTime.now().subtract(const Duration(days: 2)),
+            placeName: 'Goa Medical College',
           ),
           CommunityContribution(
-            id: 'c3',
-            type: ContributionType.photoUpload,
-            description: 'Added accessibility photo at Miramar Beach',
-            pointsEarned: 10,
-            timestamp: DateTime.now().subtract(const Duration(days: 3)),
-            placeName: 'Miramar Beach',
+            id: 'c-4',
+            type: ContributionType.confirmation,
+            description: 'Verified audible elevator signals at Mall de Goa',
+            pointsEarned: 3,
+            timestamp: DateTime.now().subtract(const Duration(days: 4)),
+            placeName: 'Mall de Goa',
           ),
         ],
       );

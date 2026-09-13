@@ -981,25 +981,48 @@ class _MapPickerCardState extends State<_MapPickerCard> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant _MapPickerCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSelection != null &&
+        (oldWidget.initialSelection == null ||
+            oldWidget.initialSelection!.latitude != widget.initialSelection!.latitude ||
+            oldWidget.initialSelection!.longitude != widget.initialSelection!.longitude)) {
+      final target = LatLng(
+        widget.initialSelection!.latitude,
+        widget.initialSelection!.longitude,
+      );
+      setState(() {
+        _picked = target;
+        _lastKnownCenter = target;
+      });
+      try {
+        _mapController.move(target, 16.5);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _confirmAtPoint(LatLng point) async {
+    setState(() => _picked = point);
+    final address = await context.read<AppState>().geocodingService.reverseGeocode(
+          point.latitude,
+          point.longitude,
+        );
+    widget.onConfirmed(GeoSelection(
+      latitude: point.latitude,
+      longitude: point.longitude,
+      address: address,
+    ));
+  }
+
   Future<void> _confirm() async {
     LatLng center;
     try {
       center = _mapController.camera.center;
     } catch (_) {
-      // Controller not linked yet (widget rendered but camera unavailable) —
-      // use the last known position from onPositionChanged instead.
       center = _lastKnownCenter;
     }
-    setState(() => _picked = center);
-    final address = await context.read<AppState>().geocodingService.reverseGeocode(
-          center.latitude,
-          center.longitude,
-        );
-    widget.onConfirmed(GeoSelection(
-      latitude: center.latitude,
-      longitude: center.longitude,
-      address: address,
-    ));
+    await _confirmAtPoint(center);
   }
 
   @override
@@ -1021,6 +1044,12 @@ class _MapPickerCardState extends State<_MapPickerCard> {
                     interactionOptions: const InteractionOptions(
                       flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom,
                     ),
+                    onTap: (_, point) {
+                      _confirmAtPoint(point);
+                      try {
+                        _mapController.move(point, _mapController.camera.zoom);
+                      } catch (_) {}
+                    },
                     onMapEvent: (event) {
                       if (event.camera.center != _lastKnownCenter) {
                         setState(() => _lastKnownCenter = event.camera.center);

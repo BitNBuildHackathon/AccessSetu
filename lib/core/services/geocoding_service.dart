@@ -62,18 +62,52 @@ class GeocodingService {
   /// Returns null when permission is denied or location is unavailable.
   Future<GeoSelection?> currentPosition() async {
     try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          final address = await reverseGeocode(lastPos.latitude, lastPos.longitude);
+          return GeoSelection(
+            latitude: lastPos.latitude,
+            longitude: lastPos.longitude,
+            address: address,
+          );
+        }
+      }
+
       var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          final address = await reverseGeocode(lastPos.latitude, lastPos.longitude);
+          return GeoSelection(
+            latitude: lastPos.latitude,
+            longitude: lastPos.longitude,
+            address: address,
+          );
+        }
         return null;
       }
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
-      );
+
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+      } catch (_) {
+        position = await Geolocator.getLastKnownPosition();
+      }
+
+      position ??= await Geolocator.getLastKnownPosition();
+      if (position == null) return null;
+
       final address = await reverseGeocode(position.latitude, position.longitude);
       return GeoSelection(
         latitude: position.latitude,
@@ -81,6 +115,17 @@ class GeocodingService {
         address: address,
       );
     } catch (_) {
+      try {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          final address = await reverseGeocode(lastPos.latitude, lastPos.longitude);
+          return GeoSelection(
+            latitude: lastPos.latitude,
+            longitude: lastPos.longitude,
+            address: address,
+          );
+        }
+      } catch (_) {}
       return null;
     }
   }

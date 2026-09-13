@@ -1,7 +1,7 @@
 import 'package:access_map/app/access_map_app.dart';
 import 'package:access_map/app/app_state.dart';
 import 'package:access_map/shared/models/accessibility_need.dart';
-import 'package:access_map/shared/models/travel_mode.dart';
+import 'package:access_map/shared/widgets/app_components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -10,47 +10,38 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Pumps the app, flushing the 300ms mock repository delay so no
 /// timers are left pending at the end of a test.
 Future<void> pumpApp(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(1080, 1920);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
   SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(const AccessMapApp());
   await tester.pumpAndSettle();
-  await tester.pump(const Duration(milliseconds: 400));
+  await tester.pump(const Duration(milliseconds: 500));
 }
 
-/// Completes onboarding (PA Assisted + Can't See) and returns to the map.
+/// Completes onboarding (Blind / Low Vision) and enters the map.
 Future<AppState> completeOnboarding(WidgetTester tester) async {
   await pumpApp(tester);
 
-  await tester.tap(find.text('PA Assisted'));
-  await tester.pump();
-  await tester.tap(find.text('Continue'));
+  final needFinder = find.text('Blind / Low Vision');
+  await tester.ensureVisible(needFinder);
   await tester.pumpAndSettle();
+  await tester.tap(needFinder);
+  await tester.pump();
 
-  await tester.tap(find.text("Can't See"));
-  await tester.pump();
-  await tester.ensureVisible(find.text('Open Map'));
-  await tester.pump();
-  await tester.tap(find.text('Open Map'));
+  final ctaFinder = find.text('GET STARTED & EXPLORE MAP');
+  await tester.ensureVisible(ctaFinder);
   await tester.pumpAndSettle();
-  await tester.pump(const Duration(milliseconds: 400));
+  await tester.tap(ctaFinder);
+  await tester.pumpAndSettle();
+  await tester.pump(const Duration(milliseconds: 500));
 
   return tester.element(find.byType(MaterialApp)).read<AppState>();
 }
 
 const _detailsList = ValueKey('place-details-list');
 const _reviewList = ValueKey('write-review-list');
-const _needsScroll = ValueKey('need-selection-scroll');
-
-/// Drags the need-selection scroll view until [finder] finds a widget.
-Future<void> scrollUntilVisibleNeeds(
-  WidgetTester tester,
-  Finder finder,
-) async {
-  for (var i = 0; i < 40 && finder.evaluate().isEmpty; i++) {
-    await tester.drag(find.byKey(_needsScroll), const Offset(0, -250));
-    await tester.pump();
-  }
-  await tester.pumpAndSettle();
-}
 
 /// Drags the keyed list until [finder] finds at least one widget.
 /// Tolerates multiple matches (unlike dragUntilVisible's .single check).
@@ -64,60 +55,34 @@ Future<void> scrollUntilVisible(
     await tester.pump();
   }
   await tester.pumpAndSettle();
+  if (finder.evaluate().isNotEmpty) {
+    await tester.ensureVisible(finder.first);
+    await tester.pumpAndSettle();
+  }
 }
 
 void main() {
-  testWidgets('cannot proceed to needs without selecting a mode', (tester) async {
+  testWidgets('welcome onboarding shows brand, core capabilities, and open map CTA', (tester) async {
     await pumpApp(tester);
 
-    final continueBtn = tester.widget<ElevatedButton>(
-      find.ancestor(
-        of: find.text('Continue'),
-        matching: find.bySubtype<ElevatedButton>(),
-      ),
-    );
-    expect(continueBtn.onPressed, isNull);
+    expect(find.text('AccessSetu'), findsOneWidget);
+    expect(find.text('GET STARTED & EXPLORE MAP'), findsOneWidget);
+    expect(find.text('Accessible Discovery & Navigation'), findsOneWidget);
   });
 
-  testWidgets('need selection shows every accessibility option with description', (tester) async {
+  testWidgets('welcome onboarding shows accessibility focus options', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('PA Assisted'));
-    await tester.pump();
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
-
-    // Every option from the profile page must appear on onboarding.
     for (final need in AccessibilityNeed.values) {
-      await scrollUntilVisibleNeeds(tester, find.text(need.displayName));
       expect(find.text(need.displayName), findsOneWidget);
-      expect(find.text(need.description), findsOneWidget);
     }
   });
 
-  testWidgets('cannot open map without selecting a need', (tester) async {
-    await pumpApp(tester);
-
-    await tester.tap(find.text('PA Assisted'));
-    await tester.pump();
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
-
-    final openMap = tester.widget<ElevatedButton>(
-      find.ancestor(
-        of: find.text('Open Map'),
-        matching: find.bySubtype<ElevatedButton>(),
-      ),
-    );
-    expect(openMap.onPressed, isNull);
-  });
-
-  testWidgets('mode and need persist into profile after onboarding', (tester) async {
+  testWidgets('need persists into profile after onboarding', (tester) async {
     final state = await completeOnboarding(tester);
 
     expect(state.profile.onboardingComplete, isTrue);
-    expect(state.profile.travelMode, TravelMode.paAssisted);
-    expect(state.profile.accessibilityNeeds, isNotEmpty);
+    expect(state.profile.accessibilityNeeds.contains(AccessibilityNeed.blindLowVision), isTrue);
   });
 
   testWidgets('map shell shows places, search and tabs after onboarding', (tester) async {
@@ -126,14 +91,17 @@ void main() {
     expect(find.text('Search accessible places...'), findsOneWidget);
     expect(find.text('Map'), findsWidgets);
     expect(find.text('Discover'), findsOneWidget);
-    expect(find.text('Contribute'), findsOneWidget);
+    expect(find.text('Community'), findsOneWidget);
     expect(find.text('Profile'), findsWidgets);
-    // Demo place data is visible.
-    expect(find.text('Fishka Restaurant'), findsWidgets);
   });
 
   testWidgets('wheelchair score hidden for visual profile, shown after profile change', (tester) async {
     await completeOnboarding(tester);
+
+    // Switch to Discover tab to browse places
+    await tester.tap(find.byIcon(Icons.explore_outlined));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
 
     // Open the first place details.
     await tester.tap(find.text('Fishka Restaurant').first);
@@ -150,10 +118,10 @@ void main() {
     await tester.pumpAndSettle();
     await scrollUntilVisible(
       tester,
-      find.text('Demo Wheelchair Profile'),
+      find.text('Wheelchair / Mobility'),
       const ValueKey('profile-list'),
     );
-    await tester.tap(find.text('Demo Wheelchair Profile'));
+    await tester.tap(find.text('Wheelchair / Mobility'));
     await tester.pumpAndSettle();
 
     final state = tester.element(find.byType(MaterialApp)).read<AppState>();
@@ -165,13 +133,14 @@ void main() {
 
     await tester.enterText(find.byType(TextField).first, 'fishka');
     await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
 
     await tester.tap(find.text('Fishka Restaurant').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Friendly Score'), findsOneWidget);
     expect(find.text('Accessibility overview'), findsOneWidget);
-    expect(find.byIcon(Icons.directions), findsOneWidget);
+    expect(find.byType(PrimaryButton), findsOneWidget);
     await scrollUntilVisible(tester, find.text('Accessibility features'), _detailsList);
     expect(find.text('Accessibility features'), findsOneWidget);
     await scrollUntilVisible(tester, find.text('Reviews'), _detailsList);
@@ -182,7 +151,11 @@ void main() {
     final state = await completeOnboarding(tester);
     final pointsBefore = state.profile.communityPoints;
 
-    // Open place details and start a review.
+    // Switch to Discover tab and open place details
+    await tester.tap(find.byIcon(Icons.explore_outlined));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
+
     await tester.tap(find.text('Fishka Restaurant').first);
     await tester.pumpAndSettle();
     await scrollUntilVisible(tester, find.text('Write'), _detailsList);
@@ -199,7 +172,7 @@ void main() {
     await scrollUntilVisible(tester, find.text('Submit Review'), _reviewList);
     await tester.tap(find.text('Submit Review'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
 
     final stateAfter =
@@ -212,31 +185,42 @@ void main() {
   testWidgets('helpful vote works from details', (tester) async {
     await completeOnboarding(tester);
 
+    // Switch to Discover tab
+    await tester.tap(find.byIcon(Icons.explore_outlined));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
+
     await tester.tap(find.text('Fishka Restaurant').first);
     await tester.pumpAndSettle();
     await scrollUntilVisible(tester, find.textContaining('Helpful'), _detailsList);
+    await tester.drag(find.byKey(_detailsList), const Offset(0, -250));
+    await tester.pumpAndSettle();
 
-    final votesBefore = tester
+    final placeBefore = tester
         .element(find.byType(MaterialApp))
         .read<AppState>()
         .places
-        .first
-        .reviews
-        .first
-        .helpfulVotes;
+        .firstWhere((p) => p.name == 'Fishka Restaurant');
+    final votesBefore = placeBefore.reviews.first.helpfulVotes;
 
     await tester.tap(find.textContaining('Helpful').first);
     await tester.pumpAndSettle();
 
     final state = tester.element(find.byType(MaterialApp)).read<AppState>();
+    final placeAfter = state.places.firstWhere((p) => p.name == 'Fishka Restaurant');
     expect(
-      state.places.first.reviews.first.helpfulVotes,
+      placeAfter.reviews.first.helpfulVotes,
       votesBefore + 1,
     );
   });
 
   testWidgets('feature confirmation awards +3 points', (tester) async {
     final state = await completeOnboarding(tester);
+
+    // Switch to Discover tab
+    await tester.tap(find.byIcon(Icons.explore_outlined));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
 
     await tester.tap(find.text('Fishka Restaurant').first);
     await tester.pumpAndSettle();

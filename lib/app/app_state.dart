@@ -1,10 +1,15 @@
 import 'package:access_map/core/services/geocoding_service.dart';
 import 'package:access_map/core/services/navigation_service.dart';
+import 'package:access_map/core/services/offline_map_service.dart';
+import 'package:access_map/core/services/profile_storage_service.dart';
+import 'package:access_map/core/services/tts_service.dart';
 import 'package:access_map/core/services/voice_search_service.dart';
 import 'package:access_map/features/map/data/mock_place_repository.dart';
+import 'package:access_map/core/services/exploration_service.dart';
 import 'package:access_map/shared/models/accessibility_feature.dart';
 import 'package:access_map/shared/models/accessibility_need.dart';
 import 'package:access_map/shared/models/place.dart';
+import 'package:access_map/shared/models/place_category.dart';
 import 'package:access_map/shared/models/place_review.dart';
 import 'package:access_map/shared/models/travel_mode.dart';
 import 'package:access_map/shared/models/user_profile.dart';
@@ -16,23 +21,49 @@ class AppState extends ChangeNotifier {
     VoiceSearchService? voiceSearchService,
     NavigationService? navigationService,
     GeocodingService? geocodingService,
+    ProfileStorageService? profileStorageService,
+    TTSService? ttsService,
+    ExplorationService? explorationService,
+    OfflineMapService? offlineMapService,
   })  : _placeRepository = placeRepository ?? MockPlaceRepository(),
         _voiceSearchService = voiceSearchService ?? SpeechToTextService(),
         _navigationService = navigationService ?? NavigationService(),
-        _geocodingService = geocodingService ?? const GeocodingService();
+        _geocodingService = geocodingService ?? const GeocodingService(),
+        _profileStorageService = profileStorageService ?? ProfileStorageService(),
+        _ttsService = ttsService ?? TTSService(),
+        _offlineMapService = offlineMapService ?? OfflineMapService() {
+    _offlineMapService.addListener(notifyListeners);
+    _explorationService = explorationService ?? ExplorationService(_ttsService, _placeRepository);
+    _explorationService.onContributionEarned = (points, description) {
+      final contribution = CommunityContribution(
+        id: 'hazard-${DateTime.now().microsecondsSinceEpoch}',
+        type: ContributionType.confirmation,
+        description: description,
+        pointsEarned: points,
+        timestamp: DateTime.now(),
+      );
+      _updateProfile(_profile.copyWith(
+        communityPoints: _profile.communityPoints + points,
+        accessibilityUpdates: _profile.accessibilityUpdates + 1,
+        recentActivity: [contribution, ..._profile.recentActivity],
+      ));
+    };
+    _loadProfile();
+  }
 
   final PlaceRepository _placeRepository;
   final VoiceSearchService _voiceSearchService;
   final NavigationService _navigationService;
   final GeocodingService _geocodingService;
+  final ProfileStorageService _profileStorageService;
+  final TTSService _ttsService;
+  late final ExplorationService _explorationService;
+  final OfflineMapService _offlineMapService;
 
   GeocodingService get geocodingService => _geocodingService;
   PlaceRepository get placeRepository => _placeRepository;
 
-  UserProfile _profile = UserProfile.mockUser().copyWith(
-    onboardingComplete: false,
-    accessibilityNeeds: const [],
-  );
+  UserProfile _profile = UserProfile.empty();
   List<Place> _places = [];
   List<Place> _visiblePlaces = [];
   Place? _selectedPlace;
@@ -56,6 +87,26 @@ class AppState extends ChangeNotifier {
   bool get hasSelectedTravelMode => _hasSelectedTravelMode;
   String? get errorMessage => _errorMessage;
   int get tabIndex => _tabIndex;
+  String get ttsLanguage => _ttsService.currentLanguage;
+  TTSService get ttsService => _ttsService;
+  ExplorationService get explorationService => _explorationService;
+  OfflineMapService get offlineMapService => _offlineMapService;
+
+  Future<void> _loadProfile() async {
+    final loadedProfile = await _profileStorageService.loadProfile();
+    if (loadedProfile != null) {
+      _profile = loadedProfile;
+      _ttsService.isEnabled = _profile.accessibilityNeeds.contains(AccessibilityNeed.blindLowVision);
+      notifyListeners();
+    }
+  }
+
+  void _updateProfile(UserProfile newProfile) {
+    _profile = newProfile;
+    _ttsService.isEnabled = _profile.accessibilityNeeds.contains(AccessibilityNeed.blindLowVision);
+    _profileStorageService.saveProfile(_profile);
+    notifyListeners();
+  }
 
   Future<void> loadPlaces() async {
     _isLoadingPlaces = true;
@@ -64,7 +115,7 @@ class AppState extends ChangeNotifier {
     try {
       _places = await _placeRepository.getNearbyPlaces(15.4909, 73.8278);
       _visiblePlaces = _places;
-      _selectedPlace = _places.isNotEmpty ? _places.first : null;
+      _selectedPlace = null;
     } catch (_) {
       _errorMessage = "Couldn't load nearby places. Please try again.";
     } finally {
@@ -75,8 +126,7 @@ class AppState extends ChangeNotifier {
 
   void selectTravelMode(TravelMode mode) {
     _hasSelectedTravelMode = true;
-    _profile = _profile.copyWith(travelMode: mode);
-    notifyListeners();
+    _updateProfile(_profile.copyWith(travelMode: mode));
   }
 
   void toggleNeed(AccessibilityNeed need) {
@@ -86,25 +136,28 @@ class AppState extends ChangeNotifier {
     } else {
       needs.add(need);
     }
-    _profile = _profile.copyWith(accessibilityNeeds: needs);
-    notifyListeners();
+    _updateProfile(_profile.copyWith(accessibilityNeeds: needs));
   }
 
   void completeOnboarding() {
-    _profile = _profile.copyWith(onboardingComplete: true);
-    notifyListeners();
+    _updateProfile(_profile.copyWith(onboardingComplete: true));
   }
 
-  void updateDemoProfile({
+  void updateProfile({
+    String? displayName,
     TravelMode? travelMode,
     List<AccessibilityNeed>? needs,
+    MedicalInfo? medicalInfo,
+    List<EmergencyContact>? emergencyContacts,
   }) {
-    _profile = _profile.copyWith(
+    _updateProfile(_profile.copyWith(
+      displayName: displayName,
       travelMode: travelMode,
       accessibilityNeeds: needs,
+      medicalInfo: medicalInfo,
+      emergencyContacts: emergencyContacts,
       onboardingComplete: true,
-    );
-    notifyListeners();
+    ));
   }
 
   Future<void> search(String query) async {
@@ -127,6 +180,11 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearSelectedPlace() {
+    _selectedPlace = null;
+    notifyListeners();
+  }
+
   void changeTab(int index) {
     _tabIndex = index;
     notifyListeners();
@@ -145,6 +203,48 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     return userMessage;
   }
+
+  Future<void> setTTSLanguage(String langCode) async {
+    await _ttsService.setLanguage(langCode);
+    notifyListeners();
+  }
+
+  Future<void> triggerSurroundingsDiscovery() async {
+    // Only trigger if visually impaired
+    if (!_profile.accessibilityNeeds.contains(AccessibilityNeed.blindLowVision)) return;
+
+    final medicalPlaces = _places.where((p) => 
+      p.category == PlaceCategory.hospital || p.category == PlaceCategory.clinic
+    ).toList();
+
+    final topPlaces = medicalPlaces.take(3).toList();
+    
+    if (topPlaces.isEmpty) {
+      await _ttsService.speak("You are currently exploring. There are no medical facilities nearby.");
+      return;
+    }
+
+    String prompt = "You are currently exploring. Nearby necessary places are: ";
+    for (var place in topPlaces) {
+      prompt += "${place.name}, ";
+    }
+    
+    await _ttsService.speak(prompt);
+  }
+
+  Future<String?> toggleExplorationMode() async {
+    if (_explorationService.isActive) {
+      _explorationService.stopExploration();
+      notifyListeners();
+      return null;
+    } else {
+      final error = await _explorationService.startExploration();
+      notifyListeners();
+      return error;
+    }
+  }
+
+
 
   Future<bool> openDirections(Place place) {
     return _navigationService.openExternalDirections(place);
@@ -190,12 +290,12 @@ class AppState extends ChangeNotifier {
       placeId: place.id,
       placeName: place.name,
     );
-    _profile = _profile.copyWith(
+    _updateProfile(_profile.copyWith(
       communityPoints:
           _profile.communityPoints + ContributionType.review.pointsEarned,
       reviewCount: _profile.reviewCount + 1,
       recentActivity: [contribution, ..._profile.recentActivity],
-    );
+    ));
     notifyListeners();
   }
 
@@ -215,11 +315,11 @@ class AppState extends ChangeNotifier {
       placeId: place.id,
       placeName: place.name,
     );
-    _profile = _profile.copyWith(
+    _updateProfile(_profile.copyWith(
       communityPoints:
           _profile.communityPoints + ContributionType.helpfulVote.pointsEarned,
       recentActivity: [contribution, ..._profile.recentActivity],
-    );
+    ));
     notifyListeners();
   }
 
@@ -253,12 +353,12 @@ class AppState extends ChangeNotifier {
       placeId: place.id,
       placeName: place.name,
     );
-    _profile = _profile.copyWith(
+    _updateProfile(_profile.copyWith(
       communityPoints:
           _profile.communityPoints + ContributionType.confirmation.pointsEarned,
       accessibilityUpdates: _profile.accessibilityUpdates + 1,
       recentActivity: [contribution, ..._profile.recentActivity],
-    );
+    ));
     notifyListeners();
   }
 
@@ -329,9 +429,9 @@ class AppState extends ChangeNotifier {
       placeId: place.id,
       placeName: place.name,
     );
-    _profile = _profile.copyWith(
+    _updateProfile(_profile.copyWith(
       recentActivity: [contribution, ..._profile.recentActivity],
-    );
+    ));
     notifyListeners();
   }
 
@@ -355,13 +455,12 @@ class AppState extends ChangeNotifier {
       placeId: stored.id,
       placeName: stored.name,
     );
-    _profile = _profile.copyWith(
+    _updateProfile(_profile.copyWith(
       communityPoints:
           _profile.communityPoints + ContributionType.locationAdd.pointsEarned,
       locationCount: _profile.locationCount + 1,
       recentActivity: [contribution, ..._profile.recentActivity],
-    );
-    notifyListeners();
+    ));
     return stored;
   }
 }
