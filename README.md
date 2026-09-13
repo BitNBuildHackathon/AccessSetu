@@ -20,9 +20,12 @@ We built **AccessSetu** to bridge that gap. It is a lightweight, privacy-focused
 
 ---
 
+### Download the App
+**Direct APK Download:** [Download AccessSetu APK (Latest Release)](https://github.com/virtuallysarvad/access_app/releases/latest) | [View All GitHub Releases](https://github.com/virtuallysarvad/access_app/releases)
+
 | Welcome & Persona Setup | Accessible Map & Hazard Reporting |
 | :---: | :---: |
-| <img src="screenshots/00_onboarding_welcome.jpg" width="300" alt="AccessSetu Welcome Onboarding" /> | <img src="screenshots/06_report_hazard_feedback.png" width="300" alt="Accessible Map & Hazard Reporting" /> |
+| <a href="https://github.com/virtuallysarvad/access_app/releases/latest"><img src="screenshots/00_onboarding_welcome.jpg" width="300" alt="AccessSetu Welcome Onboarding" /></a> | <a href="https://github.com/virtuallysarvad/access_app/releases/latest"><img src="screenshots/06_report_hazard_feedback.png" width="300" alt="Accessible Map & Hazard Reporting" /></a> |
 
 ---
 
@@ -101,18 +104,6 @@ Expand spoken navigation beyond English to regional Indian languages including K
 
 ### 6. "Saathi" Volunteer Companion Dispatch
 Build an on-demand volunteer dispatch module connecting individuals who need physical guidance with vetted local volunteers and NGO partners for last-mile assistance.
-
-### 7. Indoor Navigation & BLE Beacon Mesh
-Deploy Bluetooth Low Energy (BLE) beacons and Ultra-Wideband (UWB) indoor positioning to enable turn-by-turn navigation inside GPS-denied environments like hospitals (GMC Bambolim), railway stations, and transit terminals.
-
-### 8. Wearable & Haptic Direction Feedback
-Develop a companion smartwatch app (Wear OS / watchOS) delivering directional haptic pulses to the user's wrist (e.g., directional taps for turns, continuous pulses for approaching obstacles) for discreet, eyes-free navigation in crowded public spaces.
-
-### 9. Municipal Public Works & Civic Dashboard
-Provide local municipal bodies (such as the Corporation of the City of Panaji and Public Works Department) with an administrative dashboard that automatically converts geotagged citizen hazard reports into prioritized maintenance tickets.
-
-### 10. Passive Surface Roughness & Incline Sensing
-Use device accelerometer and gyroscope telemetry while in motion to automatically classify sidewalk surface quality (paved, gravel, cracked) and incline steepness, generating crowdsourced accessibility heatmaps passively without manual data entry.
 
 ---
 
