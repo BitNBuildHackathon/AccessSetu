@@ -4,10 +4,8 @@ on:
   push:
     branches:
       - main
-      - access-setu
     tags:
       - 'v*'
-      - 'test*'
   workflow_dispatch:
 
 permissions:
@@ -39,7 +37,7 @@ jobs:
         run: |
           flutter pub get
           flutter build apk --release
-          cp build/app/outputs/flutter-apk/app-release.apk AccessSetu-test.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AccessSetu.apk
 
       - name: Determine Tag Name
         id: tag
@@ -47,13 +45,13 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           else
-            echo "name=test" >> $GITHUB_OUTPUT
+            echo "name=latest" >> $GITHUB_OUTPUT
           fi
 
       - name: GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
-          name: AccessSetu Test Release (${{ steps.tag.outputs.name }})
-          files: AccessSetu-test.apk
+          name: AccessSetu Release (${{ steps.tag.outputs.name }})
+          files: AccessSetu.apk
           generate_release_notes: true

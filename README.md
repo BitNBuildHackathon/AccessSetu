@@ -21,16 +21,19 @@ We built **AccessSetu** to bridge that gap. It is a lightweight, privacy-focused
 ---
 
 ### Download the App
-**Direct APK Download:** [Download AccessSetu APK (Latest Release)](https://github.com/virtuallysarvad/access_app/releases/latest) | [View All GitHub Releases](https://github.com/virtuallysarvad/access_app/releases)
+**Direct APK Download:** [Download AccessSetu APK (Latest Release)](https://github.com/BitNBuildHackathon/AccessSetu/releases/latest) | [View All GitHub Releases](https://github.com/BitNBuildHackathon/AccessSetu/releases)
+
 <p>
-  <a href="https://github.com/virtuallysarvad/access_app/releases/latest">
+  <a href="https://github.com/BitNBuildHackathon/AccessSetu/releases/latest">
     <img src="screenshots/00_onboarding_welcome.jpg" width="300" alt="AccessSetu Welcome Onboarding" />
   </a>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/virtuallysarvad/access_app/releases/latest">
+  <a href="https://github.com/BitNBuildHackathon/AccessSetu/releases/latest">
     <img src="screenshots/06_report_hazard_feedback.png" width="300" alt="Accessible Map & Hazard Reporting" />
   </a>
 </p>
+
+---
 
 ## What Makes AccessSetu Different
 
@@ -135,7 +138,7 @@ To compile and publish a production APK automatically via GitHub Actions:
 git tag v1.0.0
 git push origin main --tags
 ```
-The workflow will compile and publish the single release APK (`AccessSetu-test.apk`) directly on the GitHub Releases page.
+The workflow will compile and publish the single release APK (`AccessSetu.apk`) directly on the GitHub Releases page.
 
 ---
 
