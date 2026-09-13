@@ -287,9 +287,12 @@ class ProfileScreen extends StatelessWidget {
                         'Emergency Contacts: ',
                         style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
                       ),
-                      Text(
-                        '${profile.emergencyContacts.length} contact(s) saved',
-                        style: AppTypography.bodyMedium,
+                      Expanded(
+                        child: Text(
+                          '${profile.emergencyContacts.length} contact(s) saved',
+                          style: AppTypography.bodyMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
