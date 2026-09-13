@@ -22,12 +22,15 @@ We built **AccessSetu** to bridge that gap. It is a lightweight, privacy-focused
 
 ### Download the App
 **Direct APK Download:** [Download AccessSetu APK (Latest Release)](https://github.com/virtuallysarvad/access_app/releases/latest) | [View All GitHub Releases](https://github.com/virtuallysarvad/access_app/releases)
-
-| Welcome & Persona Setup | Accessible Map & Hazard Reporting |
-| :---: | :---: |
-| <a href="https://github.com/virtuallysarvad/access_app/releases/latest"><img src="screenshots/00_onboarding_welcome.jpg" width="300" alt="AccessSetu Welcome Onboarding" /></a> | <a href="https://github.com/virtuallysarvad/access_app/releases/latest"><img src="screenshots/06_report_hazard_feedback.png" width="300" alt="Accessible Map & Hazard Reporting" /></a> |
-
----
+<p>
+  <a href="https://github.com/virtuallysarvad/access_app/releases/latest">
+    <img src="screenshots/00_onboarding_welcome.jpg" width="300" alt="AccessSetu Welcome Onboarding" />
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/virtuallysarvad/access_app/releases/latest">
+    <img src="screenshots/06_report_hazard_feedback.png" width="300" alt="Accessible Map & Hazard Reporting" />
+  </a>
+</p>
 
 ## What Makes AccessSetu Different
 
